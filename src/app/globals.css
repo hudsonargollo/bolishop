@@ -1,26 +1,148 @@
 @import "tailwindcss";
 
+/* ============================================================
+   ZARIERA — stainless steel & artificial jewelry brand theme
+   Warm cream + deep wine + antique gold (per client mockup)
+   ============================================================ */
+@theme {
+  /* Brand — deep wine/maroon */
+  --color-maroon: #5b1a2b;     /* primary dark — footer, buttons, frames */
+  --color-maroon-2: #4a1420;
+  --color-wine-deep: #3d1019;
+  --color-panel: #ede0c8;      /* hero / framed panel (deeper cream) */
+  --color-panel-2: #e6d4b6;
+
+  /* Antique gold */
+  --color-gold: #c39a4e;
+  --color-gold-hi: #e6cd8b;
+  --color-gold-deep: #a97e30;
+
+  /* Neutrals — warm */
+  --color-ink: #3a231e;        /* warm dark text on cream */
+  --color-cream: #f4e8d5;      /* page background (warm ivory) */
+  --color-cream-soft: #f9f0e2;
+  --color-sand: #e8d7ba;
+  --color-muted: #8a6f63;      /* muted text on light */
+  --color-muted-dark: #dcc6ad; /* muted text on dark maroon */
+
+  /* Fonts (wired via next/font in layout.tsx) */
+  --font-serif: var(--font-cormorant), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-jost), system-ui, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4e8d5;
+  --foreground: #3a231e;
+  /* Framing lines are maroon-tinted (classic, per mockup) */
+  --line: rgba(91, 26, 43, 0.18);
+  --line-strong: rgba(91, 26, 43, 0.4);
+  --frame: rgba(91, 26, 43, 0.7);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Clip the off-screen mobile drawer without breaking the sticky header */
+  overflow-x: clip;
+}
+
+h1, h2, h3, h4, .serif {
+  font-family: var(--font-serif);
+}
+
+/* Serif headings carry more weight so they read as substantial, not thin */
+h1, h2 {
+  font-weight: 700;
+}
+h3, h4 {
+  font-weight: 600;
+}
+
+/* Body copy sits at a comfortable, readable weight */
+p {
+  font-weight: 400;
+}
+
+/* Gold gradient text utility */
+.gold-text {
+  background: linear-gradient(120deg, var(--color-gold-hi), var(--color-gold) 55%, var(--color-gold-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Thin uppercase label */
+.eyebrow {
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--color-gold-deep);
+}
+
+/* Decorative double-line frame (classic jewelry-box border) */
+.ornate-frame {
+  position: relative;
+  border: 1px solid var(--frame);
+  outline: 3px solid transparent;
+  box-shadow: inset 0 0 0 4px var(--color-cream), inset 0 0 0 5px var(--frame);
+}
+
+/* Continuous marquee (announcement strip) */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+.animate-marquee-slow {
+  animation: marquee 55s linear infinite;
+}
+.animate-marquee-slow-rev {
+  animation: marquee 55s linear infinite reverse;
+}
+.marquee-pause:hover .animate-marquee,
+.marquee-pause:hover .animate-marquee-slow,
+.marquee-pause:hover .animate-marquee-slow-rev {
+  animation-play-state: paused;
+}
+
+/* Scroll reveal (fade + rise) */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Gentle float for accents */
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-floaty {
+  animation: floaty 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee, .animate-marquee-slow, .animate-marquee-slow-rev, .animate-floaty { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
 }

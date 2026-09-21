@@ -1,0 +1,72 @@
+import type { Metadata } from "next";
+import { Emblem } from "@/components/brand/emblem";
+
+export const metadata: Metadata = {
+  title: "FAQ",
+  description: "Answers to common questions about ordering, payment, shipping and returns at ZARIERA.",
+};
+
+const FAQS = [
+  {
+    q: "How do I place an order?",
+    a: "Browse the collection, add pieces to your bag, and check out. You can pay Cash on Delivery or securely online by card/wallet.",
+  },
+  {
+    q: "What payment methods do you accept?",
+    a: "Cash on Delivery (COD) across Pakistan, and online payments via PayFast and Safepay (card and wallet).",
+  },
+  {
+    q: "How long does delivery take?",
+    a: "Orders are typically delivered within 3–5 business days nationwide. Our team may call to confirm delivery details.",
+  },
+  {
+    q: "Can I track my order?",
+    a: "Yes — use the Order Status page and enter your order number and email to see the latest status.",
+  },
+  {
+    q: "What is your returns policy?",
+    a: "Unworn items in original condition can be returned within 7 days of delivery. Custom pieces are non-returnable unless faulty. See Shipping & Returns for details.",
+  },
+  {
+    q: "Do you make custom jewelry?",
+    a: "Yes. Visit the Custom page to start a custom design — tell us your idea and we'll create it in stainless steel.",
+  },
+  {
+    q: "What is your jewelry made of?",
+    a: "Premium stainless steel — many pieces gold-plated or rose-gold plated. It is rust-free, hypoallergenic (skin-friendly) and won't tarnish or fade with everyday wear. Material details are listed on each product page.",
+  },
+];
+
+export default function FaqPage() {
+  return (
+    <div className="mx-auto max-w-3xl px-5 py-16">
+      <div className="text-center">
+        <Emblem size={40} className="mx-auto text-gold-deep" />
+        <span className="eyebrow mt-3 block">Help</span>
+        <h1 className="mt-2 font-serif text-4xl font-semibold text-ink">
+          Frequently Asked Questions
+        </h1>
+      </div>
+
+      <div className="mt-12 divide-y divide-[var(--line)] border-y border-[var(--line)]">
+        {FAQS.map((item) => (
+          <details key={item.q} className="group py-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-lg text-ink marker:hidden">
+              {item.q}
+              <span className="text-gold-deep transition-transform group-open:rotate-45">+</span>
+            </summary>
+            <p className="mt-3 text-sm leading-relaxed text-ink/80">{item.a}</p>
+          </details>
+        ))}
+      </div>
+
+      <p className="mt-10 text-center text-sm text-muted">
+        Still have a question?{" "}
+        <a href="/contact" className="text-gold-deep hover:underline">
+          Contact us
+        </a>
+        .
+      </p>
+    </div>
+  );
+}
