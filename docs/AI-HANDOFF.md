@@ -539,3 +539,15 @@ Append one entry per AI/dev session: date, what was done, files changed, DB comm
   4 categories). **Dev server is NOT running** — start it with `npm run dev`.
 - **Not committed/pushed yet** (~86 changed paths). Next step for the user: `git add -A && git commit && git push`,
   then follow `docs/DEPLOY-NETLIFY.md`.
+
+### 2026-10-03 — Commit + push attempt, dev server restarted (Claude)
+- Committed everything locally on `main`: **`8e35c02`** "Netlify-ready demo: QA fixes, socials, optimized
+  images, deploy setup" (86 files). Secrets scan before commit: `.env`, uploads, `.netlify/` not included.
+- **Push FAILED:** `Permission to mian76951-ui/zariera_project.git denied to nabeel-warraich` — the SSH key
+  on this PC belongs to GitHub user `nabeel-warraich`, who has no write access to the repo.
+  Fix (user): add `nabeel-warraich` as a collaborator on the repo (GitHub → repo → Settings →
+  Collaborators → Add people → accept the invite), **or** push from the `mian76951-ui` account
+  (e.g. GitHub Desktop signed in as that account, or HTTPS remote + that account's token). Then `git push origin main`.
+- Dev server restarted in the background (hidden window, no terminal tab — user preference):
+  `npm run dev` → http://localhost:3000, log in the session scratchpad. Stop it with:
+  `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'next dev' } | Stop-Process -Force`
