@@ -31,7 +31,7 @@ const TRUST = [
 export function SiteFooter() {
   return (
     <footer
-      className="relative mt-24 overflow-hidden text-light/80"
+      className="relative overflow-hidden text-light/80"
       style={{ background: "linear-gradient(180deg, #3d1019 0%, #2a0b12 100%)" }}
     >
       {/* gold top accent + soft glow */}

@@ -128,7 +128,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-10">
+    <div className="mx-auto max-w-6xl px-5 pb-20 pt-10">
       <JsonLd data={productJsonLd} />
       {/* Breadcrumb */}
       <nav className="text-sm text-muted">

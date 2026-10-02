@@ -551,3 +551,15 @@ Append one entry per AI/dev session: date, what was done, files changed, DB comm
 - Dev server restarted in the background (hidden window, no terminal tab — user preference):
   `npm run dev` → http://localhost:3000, log in the session scratchpad. Stop it with:
   `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'next dev' } | Stop-Process -Force`
+
+### 2026-10-03 — Dark band above footer fixed (Claude)
+- **Report (screenshot, dark mode):** a dark empty band between the last section and the footer on every page.
+- **Cause:** `SiteFooter` had `mt-24` (96 px margin) since the original commit. The margin shows the body
+  background; in light mode it matches the cream page (invisible), in dark mode it's a visibly darker strip.
+  Missed in earlier QA because the visual checks were done in light mode.
+- **Fix:** removed `mt-24` from `src/components/site-footer.tsx`; pages keep their own bottom padding
+  (measured content→footer: shop 56, care/faq/shipping/contact/orders/search 64, cart 116, checkout 167 px;
+  home/about/custom end in a full-width coloured section that now meets the footer directly). Product page
+  bottom padding raised 40 → 80 px (`pb-20`).
+- **Verified** in dark + light, desktop + mobile (main→footer gap 0 px). `tsc`/`eslint` clean.
+- Deploy target confirmed by user: **Netlify** (not Vercel) — config already in place (netlify.toml etc.).
