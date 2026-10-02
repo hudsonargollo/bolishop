@@ -78,6 +78,7 @@ export async function createProduct(
     return { error: dbError(err) };
   }
   revalidatePath("/admin/products");
+  revalidatePath("/", "layout"); // storefront (home is cached 5 min) sees the change now
   redirect("/admin/products?flash=product-created");
 }
 
@@ -96,6 +97,7 @@ export async function updateProduct(
     return { error: dbError(err) };
   }
   revalidatePath("/admin/products");
+  revalidatePath("/", "layout"); // storefront (home is cached 5 min) sees the change now
   redirect("/admin/products?flash=product-updated");
 }
 
@@ -110,6 +112,7 @@ export async function deleteProduct(id: string): Promise<void> {
     flash = /P2003|Foreign key/i.test(msg) ? "product-in-use" : "delete-failed";
   }
   revalidatePath("/admin/products");
+  revalidatePath("/", "layout"); // storefront (home is cached 5 min) sees the change now
   redirect(`/admin/products?flash=${flash}`);
 }
 

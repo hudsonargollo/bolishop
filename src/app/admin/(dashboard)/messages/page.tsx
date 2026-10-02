@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/admin";
 import { DbBanner } from "@/components/admin/db-banner";
 import { toggleMessageHandled } from "./actions";
 
+export const metadata = { title: "Messages" };
+
 export const dynamic = "force-dynamic";
 
 function fmtDate(d: Date) {

@@ -43,3 +43,6 @@ next-env.d.ts
 
 # admin-uploaded product images (persistent volume in production)
 /uploads/
+
+# Netlify local build output
+/.netlify/

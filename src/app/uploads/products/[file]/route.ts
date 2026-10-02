@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { IMAGE_TYPES, PRODUCT_UPLOAD_DIR, SAFE_UPLOAD_NAME, type ImageExt } from "@/lib/uploads";
+import { IMAGE_TYPES, SAFE_UPLOAD_NAME, readUpload, type ImageExt } from "@/lib/uploads";
 
 export const runtime = "nodejs";
 
@@ -10,7 +8,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/uploads/product
   if (!SAFE_UPLOAD_NAME.test(file)) return new Response("Not found", { status: 404 });
 
   try {
-    const data = await readFile(path.join(PRODUCT_UPLOAD_DIR, file));
+    const data = await readUpload(file);
+    if (!data) return new Response("Not found", { status: 404 });
     const ext = file.split(".").pop() as ImageExt;
     return new Response(new Uint8Array(data), {
       headers: {

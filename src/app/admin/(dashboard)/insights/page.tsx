@@ -5,6 +5,8 @@ import {
   RecentCustomersPanel,
 } from "@/components/admin/dashboard-insights";
 
+export const metadata = { title: "Insights" };
+
 export const dynamic = "force-dynamic";
 
 export default async function InsightsPage() {

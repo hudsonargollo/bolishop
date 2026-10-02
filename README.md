@@ -128,8 +128,12 @@ Tokens live in `src/app/globals.css`.
 
 ## Deployment
 
-**Vercel (simplest):** import the repo, set the env vars from `.env.example`,
-deploy. Run `npx prisma migrate deploy` against the production database.
+**Netlify (client demo):** step-by-step in [`docs/DEPLOY-NETLIFY.md`](docs/DEPLOY-NETLIFY.md) —
+cloud Postgres (Neon), `npm run db:copy` to move local data, env vars from
+`netlify.env.example`. `netlify.toml` runs migrations + build; uploads use Netlify Blobs.
+
+**Env note:** `DIRECT_URL` (non-pooled DB URL, used by migrations) is required next to
+`DATABASE_URL` — locally both are the same value.
 
 **Docker / VPS:** the app builds to a standalone server (`output: "standalone"`).
 Use a **single long-running instance** (live order alerts + rate limits are in-memory).

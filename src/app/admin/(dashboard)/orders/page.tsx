@@ -3,6 +3,8 @@ import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { OrdersTable } from "@/components/admin/orders-table";
 
+export const metadata = { title: "Orders" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage() {

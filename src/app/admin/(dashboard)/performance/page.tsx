@@ -2,6 +2,8 @@ import { getStorePerformance, getOrderStatusBreakdown } from "@/lib/admin-data";
 import { PerformanceRings } from "@/components/admin/performance-rings";
 import { OrderPipelineDonut } from "@/components/admin/order-pipeline-donut";
 
+export const metadata = { title: "Performance" };
+
 export const dynamic = "force-dynamic";
 
 export default async function PerformancePage() {

@@ -9,6 +9,8 @@ import { updateOrderStatus, updatePaymentStatus } from "../actions";
 import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS } from "@/lib/order-status";
 import { courierLabel, trackingUrl } from "@/lib/couriers";
 
+export const metadata = { title: "Order details" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrderDetailPage({

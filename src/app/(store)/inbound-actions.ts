@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit, TOO_MANY } from "@/lib/rate-limit";
 import { sendContactNotification } from "@/lib/email";
 
-export type InboundState = { ok?: boolean; error?: string };
+export type InboundState = { ok?: boolean; error?: string; values?: Record<string, string> };
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(120),
@@ -17,7 +17,17 @@ const contactSchema = z.object({
 });
 
 // Contact form → saved for the admin (Messages page) + best-effort email alert.
-export async function sendContactMessage(_prev: InboundState, formData: FormData): Promise<InboundState> {
+export async function sendContactMessage(prev: InboundState, formData: FormData): Promise<InboundState> {
+  const res = await saveContact(prev, formData);
+  if (res.ok) return res;
+  // Keep what they typed after an error (React 19 resets the form).
+  const values = Object.fromEntries(
+    ["name", "email", "phone", "subject", "message"].map((k) => [k, String(formData.get(k) ?? "")])
+  );
+  return { ...res, values };
+}
+
+async function saveContact(_prev: InboundState, formData: FormData): Promise<InboundState> {
   // Honeypot: real users never fill this hidden field.
   if (String(formData.get("website") ?? "")) return { ok: true };
   if (!rateLimit(`contact:${await clientIp()}`, 5, 30 * 60_000)) return { error: TOO_MANY };

@@ -45,6 +45,7 @@ export async function createCategory(
     return { error: "Could not create the category." };
   }
   revalidatePath("/admin/categories");
+  revalidatePath("/", "layout");
   revalidatePath("/shop");
   return { ok: true };
 }
@@ -60,5 +61,6 @@ export async function deleteCategory(id: string): Promise<void> {
     flash = /P2003|Foreign key/i.test(msg) ? "category-in-use" : "delete-failed";
   }
   revalidatePath("/admin/categories");
+  revalidatePath("/", "layout");
   redirect(`/admin/categories?flash=${flash}`);
 }

@@ -36,7 +36,7 @@ export function LoginForm({ next }: { next?: string }) {
         {next && <input type="hidden" name="next" value={next} />}
         <div>
           <label className={label}>Email</label>
-          <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className={input} />
+          <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" defaultValue={state.values?.email} className={input} />
         </div>
         <div>
           <label className={label}>Password</label>

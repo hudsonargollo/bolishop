@@ -189,7 +189,7 @@ const PRODUCTS: P[] = [
     material: "Gold-Plated Stainless Steel",
     stock: 16,
     featured: false,
-    image: "/images/products/astra-pave-bangle.png",
+    image: "/images/products/astra-pave-bangle.jpg",
     description:
       "A slim, refined bangle scattered with cubic-zirconia dots and lines like a trail of stars — subtle sparkle that layers perfectly. Hinged secure closure." +
       CARE,
@@ -203,7 +203,7 @@ const PRODUCTS: P[] = [
     material: "Gold-Plated Stainless Steel",
     stock: 12,
     featured: true,
-    image: "/images/products/papillon-butterfly-bangle.png",
+    image: "/images/products/papillon-butterfly-bangle.jpg",
     description:
       "An open bangle crowned with a pavé cubic-zirconia butterfly — a graceful symbol of transformation and one of our most-loved statement pieces." +
       CARE,

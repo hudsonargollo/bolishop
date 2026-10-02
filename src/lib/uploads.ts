@@ -32,3 +32,53 @@ export function sniffImage(buf: Buffer): ImageExt | null {
 
 // Only names this app generates: lowercase slug + timestamp + known extension.
 export const SAFE_UPLOAD_NAME = /^[a-z0-9-]{1,80}\.(jpg|png|webp|avif)$/;
+
+// ---------- Storage backends ----------
+// Disk (UPLOAD_DIR) on a normal Node server / VPS. On Netlify the server
+// filesystem is read-only, so files go to Netlify Blobs instead (store
+// "product-uploads"); if a disk write fails for any reason we fall back too.
+
+const BLOB_STORE = "product-uploads";
+
+function onNetlify(): boolean {
+  return Boolean(process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT || process.env.NETLIFY_LOCAL);
+}
+
+async function blobStore() {
+  const { getStore } = await import("@netlify/blobs");
+  return getStore({ name: BLOB_STORE, consistency: "strong" });
+}
+
+export async function saveUpload(filename: string, bytes: Buffer): Promise<void> {
+  if (!onNetlify()) {
+    try {
+      const { mkdir, writeFile } = await import("node:fs/promises");
+      await mkdir(PRODUCT_UPLOAD_DIR, { recursive: true });
+      await writeFile(path.join(PRODUCT_UPLOAD_DIR, filename), bytes);
+      return;
+    } catch (err) {
+      console.warn("[upload] disk write failed, trying Netlify Blobs:", err);
+    }
+  }
+  const store = await blobStore();
+  const ab = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  await store.set(filename, ab);
+}
+
+export async function readUpload(filename: string): Promise<Buffer | null> {
+  if (!onNetlify()) {
+    try {
+      const { readFile } = await import("node:fs/promises");
+      return await readFile(path.join(PRODUCT_UPLOAD_DIR, filename));
+    } catch {
+      /* not on disk — maybe stored in Blobs */
+    }
+  }
+  try {
+    const store = await blobStore();
+    const data = await store.get(filename, { type: "arrayBuffer" });
+    return data ? Buffer.from(data) : null;
+  } catch {
+    return null; // Blobs not available (local dev without Netlify)
+  }
+}

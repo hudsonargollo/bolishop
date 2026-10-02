@@ -472,3 +472,70 @@ Append one entry per AI/dev session: date, what was done, files changed, DB comm
   (In the automated test pane the clipboard is blocked, so the fallback toast showed; real user clicks copy.)
 - Option if the client prefers: open Gmail web compose instead
   (`https://mail.google.com/mail/?view=cm&to=zariera.jewelry@gmail.com`) — not done, awaiting preference.
+
+### 2026-10-03 — Dev crash fix, image optimisation, full QA pass, Netlify-ready (Claude)
+**1. "Jest worker encountered 2 child process exceptions" (dev only)**
+- Known Turbopack dev-cache corruption (see §3). Fixed by stopping all `next` processes (incl. a
+  leftover `next start -p 3100` test server from the previous session), deleting `.next` (883 MB) and
+  re-running `prisma generate` (finally succeeded — no process holding the engine). Not a code bug.
+- If it ever returns: stop `next dev`, `rm -rf .next`, `npx next typegen`, `npm run dev`.
+
+**2. Speed**
+- Images re-encoded (originals backed up in the session scratchpad): **10.8 MB → 4.9 MB**, max 1600 px
+  wide, mozjpeg q80, same filenames. Two product PNGs (~1 MB each, opaque) → JPG (~30 KB):
+  `astra-pave-bangle.jpg`, `papillon-butterfly-bangle.jpg` — DB rows + `prisma/import-products.ts` updated.
+- Hero + promo sliders now only download the visible slide and its neighbours (were all 5 / all 16 at once).
+- Measured: DB queries 2–13 ms; dev mode ~1 s/page (on-demand compile), **production build 50–250 ms/page**.
+  User decided further speed work waits for the paid server.
+
+**3. Full QA pass (production build on :3100)**
+- Crawl: 43/43 routes OK (every product + category, filters, search, 404, robots, sitemap).
+- Suite: 44/45 — the one "fail" is the restored sample reviews (expected, by request).
+- Browser flows ✅: add to cart, quick add, cart, checkout COD (Rs 6,300 + 500 shipping = 6,800), success
+  page, order tracking (case-insensitive), register (8-char min enforced), sign out, guarded /account →
+  login?next, wrong password, sign in; admin login, dashboard, order status change, courier booking
+  (correctly refused without keys in prod), cancel → **stock restored**, product create / edit (price
+  shows on storefront) / delete, delete of product with orders blocked with message, category add/delete,
+  all 10 admin pages 200.
+- **Bugs found & fixed in this pass:**
+  - Forms wiped all fields after an error (React 19 form-action reset) → actions echo `values`, inputs use
+    them as `defaultValue` (login, register, forgot password, admin login, contact, order tracking).
+  - Home page didn't show admin product/category changes for up to 5 min → `revalidatePath("/", "layout")`.
+  - Category Delete had no confirmation (one click deleted Necklaces/Earrings) → `DeleteButton` confirm.
+  - Cart page + all admin pages had the generic site title → `cart/layout.tsx` metadata; admin titles
+    "<Page> · ZARIERA Admin" + admin `noindex`.
+  - Checkout labels not linked to inputs (screen readers) → `id`/`htmlFor` pairs.
+- QA data cleaned up afterwards (see below).
+
+**4. Netlify deploy readiness** — guide: **`docs/DEPLOY-NETLIFY.md`**
+- `next.config.ts`: `output: "standalone"` only when NOT on Netlify (`NETLIFY=true` at build);
+  `outputFileTracingIncludes` ships the Prisma engine.
+- `prisma/schema.prisma`: `binaryTargets = ["native", "rhel-openssl-3.0.x"]` (Netlify/AWS Lambda) and
+  `directUrl = env("DIRECT_URL")` (Neon pooled URL for the app, direct URL for migrations).
+  **`DIRECT_URL` added to local `.env`** (= DATABASE_URL) and `.env.example`.
+- `netlify.toml`: build = `npx prisma migrate deploy && npm run build`, Node 22.
+- `netlify.env.example`: every env var to import into Netlify (socials pre-filled, `COURIER_SIMULATION=true`
+  for the demo).
+- Uploads: `src/lib/uploads.ts` `saveUpload/readUpload` → disk on VPS, **Netlify Blobs** on Netlify
+  (store `product-uploads`, new dep `@netlify/blobs` 10.7). Upload + `/uploads/products/[file]` routes use it.
+- Live order bell works on serverless: SSE route now also polls the DB every 5 s from a `since` cursor;
+  client reconnects with the last seen `createdAt`, de-duplicates by id.
+- New `npm run db:copy` (`prisma/copy-data.ts`): copies all data local → cloud DB, idempotent
+  (tested into a temp DB `zariera_copytest`: 4 categories, 15 products, 1 admin, 4 customers, 18 orders,
+  37 items; re-run skipped all; temp DB dropped).
+- `NETLIFY=true next build` → success, no standalone folder (correct).
+- ⚠️ Local admin password is weak (`.env`) — the guide sets a strong one on the cloud DB via
+  `db:create-admin` before the demo URL is shared.
+- **Netlify build verified locally** with `netlify-cli build --offline`: "Netlify Build Complete";
+  server function `___netlify-server-handler` contains `libquery_engine-rhel-openssl-3.0.x.so.node`.
+  `/.netlify/` added to `.gitignore`.
+- **Final regression on the latest build:** e2e 44/45 (only the expected sample-reviews check), admin
+  titles ("Orders · ZARIERA Admin"), cart title ("Shopping Bag · ZARIERA"), upload + serve OK, and live
+  order alert **delivered via DB polling** (order inserted straight into the DB → `event: order` on the
+  admin stream within 5 s — this is the Netlify path). Stream poll errors are now logged.
+  (A first "fail" here was a bug in the test script's stream reader, not the app.)
+- `README.md` → Netlify section + `DIRECT_URL` note.
+- All local test servers stopped; QA data removed (DB back to 17 orders / 15 products / 3 customers /
+  4 categories). **Dev server is NOT running** — start it with `npm run dev`.
+- **Not committed/pushed yet** (~86 changed paths). Next step for the user: `git add -A && git commit && git push`,
+  then follow `docs/DEPLOY-NETLIFY.md`.

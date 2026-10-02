@@ -3,6 +3,8 @@ import { formatPrice } from "@/lib/format";
 import { SalesChartPro } from "@/components/admin/sales-chart-pro";
 import { PaymentMethodPanel, SalesHighlightsPanel } from "@/components/admin/dashboard-insights";
 
+export const metadata = { title: "Analytics" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {

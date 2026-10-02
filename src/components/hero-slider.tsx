@@ -34,16 +34,22 @@ export function HeroSlider() {
       onMouseLeave={() => (paused.current = false)}
     >
       {/* Slides (cross-fade) */}
-      {SLIDES.map((src, i) => (
-        <div
-          key={src}
-          aria-hidden="true"
-          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-[1200ms] ease-in-out ${
-            i === index ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ backgroundImage: `url(${src})` }}
-        />
-      ))}
+      {SLIDES.map((src, i) => {
+        // Only download the visible slide and its neighbours (needed for the
+        // cross-fade) — not all 5 photos on first load.
+        const n = SLIDES.length;
+        const near = i === index || i === (index + 1) % n || i === (index - 1 + n) % n;
+        return (
+          <div
+            key={src}
+            aria-hidden="true"
+            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-[1200ms] ease-in-out ${
+              i === index ? "opacity-100" : "opacity-0"
+            }`}
+            style={near ? { backgroundImage: `url(${src})` } : undefined}
+          />
+        );
+      })}
 
       {/* Maroon overlay */}
       <div

@@ -2,6 +2,8 @@ import { getAdminCustomers } from "@/lib/admin-data";
 import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 
+export const metadata = { title: "Customers" };
+
 export const dynamic = "force-dynamic";
 
 function fmtDate(iso: string) {

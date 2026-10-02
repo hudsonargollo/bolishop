@@ -2,6 +2,9 @@ import { getAdminCategories } from "@/lib/admin-data";
 import { DbBanner } from "@/components/admin/db-banner";
 import { AddCategoryForm } from "@/components/admin/category-form";
 import { deleteCategory } from "./actions";
+import { DeleteButton } from "@/components/admin/delete-button";
+
+export const metadata = { title: "Categories" };
 
 export const dynamic = "force-dynamic";
 
@@ -47,9 +50,10 @@ export default async function AdminCategoriesPage() {
                             In use
                           </span>
                         ) : (
-                          <form action={deleteCategory.bind(null, c.id)} className="inline">
-                            <button className="text-xs font-medium text-red-600 hover:underline">Delete</button>
-                          </form>
+                          <DeleteButton
+                            action={deleteCategory.bind(null, c.id)}
+                            confirmText={`Delete the "${c.name}" category? This can't be undone.`}
+                          />
                         )}
                       </td>
                     </tr>

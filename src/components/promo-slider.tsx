@@ -178,7 +178,9 @@ export function PromoSlider() {
                 className="h-full bg-cover"
                 style={{
                   width: `${100 / TOTAL}%`,
-                  backgroundImage: `url(${slide.src})`,
+                  // Lazy: only the visible slide and its neighbours download
+                  // (was all 16 photos on page load). Revisits come from cache.
+                  backgroundImage: Math.abs(i - index) <= 1 ? `url(${slide.src})` : undefined,
                   backgroundPosition: slide.focus,
                 }}
               />

@@ -4,6 +4,8 @@ import { getAdminProduct, getCategoriesForSelect } from "@/lib/admin-data";
 import { ProductForm } from "@/components/admin/product-form";
 import { updateProduct } from "../actions";
 
+export const metadata = { title: "Edit product" };
+
 export const dynamic = "force-dynamic";
 
 export default async function EditProductPage({ params }: PageProps<"/admin/products/[id]">) {

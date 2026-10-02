@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import { getVerifiedAdmin } from "@/lib/admin";
-import { PRODUCT_UPLOAD_DIR, sniffImage } from "@/lib/uploads";
+import { saveUpload, sniffImage } from "@/lib/uploads";
 
 export const runtime = "nodejs";
 
@@ -53,8 +51,7 @@ export async function POST(request: Request) {
   const filename = `${base}-${Date.now()}.${ext}`;
 
   try {
-    await mkdir(PRODUCT_UPLOAD_DIR, { recursive: true });
-    await writeFile(path.join(PRODUCT_UPLOAD_DIR, filename), bytes);
+    await saveUpload(filename, bytes);
   } catch (err) {
     console.error("[upload] failed:", err);
     return NextResponse.json({ ok: false, error: "Could not save the image." }, { status: 500 });

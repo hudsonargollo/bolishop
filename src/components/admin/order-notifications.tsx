@@ -128,14 +128,23 @@ export function OrderNotifications() {
     let es: EventSource | null = null;
     let closed = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
+    // Resume point: on serverless hosts (Netlify) the stream is cut after a
+    // few seconds, so each reconnect asks for orders created since the last
+    // one we saw — nothing is missed and nothing repeats.
+    let since = new Date().toISOString();
+    const seen = new Set<string>();
 
     const connect = () => {
       if (closed) return;
-      es = new EventSource("/api/admin/orders/stream");
+      es = new EventSource(`/api/admin/orders/stream?since=${encodeURIComponent(since)}`);
       es.addEventListener("ready", () => setConnected(true));
       es.addEventListener("order", (ev) => {
         try {
-          handleNewOrder(JSON.parse((ev as MessageEvent).data));
+          const order = JSON.parse((ev as MessageEvent).data);
+          if (seen.has(order.id)) return;
+          seen.add(order.id);
+          if (order.createdAt > since) since = order.createdAt;
+          handleNewOrder(order);
         } catch {
           /* ignore malformed */
         }

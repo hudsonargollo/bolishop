@@ -33,14 +33,14 @@ export function ContactForm({ topic, defaultSubject }: { topic?: string; default
       {/* Honeypot for bots — hidden from people and screen readers */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       <div className="grid gap-4 sm:grid-cols-2">
-        <input name="name" required autoComplete="name" placeholder="Your name" aria-label="Your name" className={field} />
-        <input name="email" required type="email" autoComplete="email" placeholder="Your email" aria-label="Your email" className={field} />
+        <input name="name" defaultValue={state.values?.name} required autoComplete="name" placeholder="Your name" aria-label="Your name" className={field} />
+        <input name="email" defaultValue={state.values?.email} required type="email" autoComplete="email" placeholder="Your email" aria-label="Your email" className={field} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <input name="phone" type="tel" autoComplete="tel" placeholder="Phone (optional)" aria-label="Phone" className={field} />
-        <input name="subject" defaultValue={defaultSubject} placeholder="Subject" aria-label="Subject" className={field} />
+        <input name="phone" defaultValue={state.values?.phone} type="tel" autoComplete="tel" placeholder="Phone (optional)" aria-label="Phone" className={field} />
+        <input name="subject" defaultValue={state.values?.subject ?? defaultSubject} placeholder="Subject" aria-label="Subject" className={field} />
       </div>
-      <textarea name="message" required rows={5} placeholder="Your message" aria-label="Your message" className={field} />
+      <textarea name="message" defaultValue={state.values?.message} required rows={5} placeholder="Your message" aria-label="Your message" className={field} />
       {state.error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
       )}

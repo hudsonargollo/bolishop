@@ -3,6 +3,8 @@ import { getCategoriesForSelect } from "@/lib/admin-data";
 import { ProductForm } from "@/components/admin/product-form";
 import { createProduct } from "../actions";
 
+export const metadata = { title: "New product" };
+
 export const dynamic = "force-dynamic";
 
 export default async function NewProductPage() {

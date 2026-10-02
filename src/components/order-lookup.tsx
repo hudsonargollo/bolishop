@@ -24,12 +24,12 @@ export function OrderLookup({ defaultOrder = "" }: { defaultOrder?: string }) {
       <form action={formAction} className="mx-auto mt-10 max-w-md space-y-4">
         <input
           name="order"
-          defaultValue={defaultOrder}
+          defaultValue={state.values?.order ?? defaultOrder}
           required
           placeholder="Order number (e.g. ZR-XXXXXX-XXXXXXXX)"
           className={inputCls}
         />
-        <input name="email" type="email" required placeholder="Email used at checkout" className={inputCls} />
+        <input name="email" type="email" required placeholder="Email used at checkout" defaultValue={state.values?.email} className={inputCls} />
         <button
           type="submit"
           disabled={pending}

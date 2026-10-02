@@ -46,7 +46,7 @@ export function ForgotPasswordForm() {
         <form action={formAction} className="mt-7 space-y-4">
           <div>
             <label className={label}>Email</label>
-            <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className={input} />
+            <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" defaultValue={state.values?.email} className={input} />
           </div>
           {state.error && <p className={errorBox}>{state.error}</p>}
           <button type="submit" disabled={pending} className={submitBtn}>

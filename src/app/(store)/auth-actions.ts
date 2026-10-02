@@ -11,7 +11,15 @@ import { createToken, readToken } from "@/lib/session-token";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/site";
 
-export type AuthState = { error?: string; ok?: boolean; message?: string };
+export type AuthState = { error?: string; ok?: boolean; message?: string; values?: Record<string, string> };
+
+// React 19 resets a form after its server action runs, so on an error the
+// shopper would have to retype everything. Echo the (non-secret) fields back;
+// the inputs use them as defaultValue.
+function keep(formData: FormData, keys: string[]): Record<string, string> {
+  return Object.fromEntries(keys.map((k) => [k, String(formData.get(k) ?? "")]));
+}
+
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(120),
@@ -24,7 +32,11 @@ const registerSchema = z.object({
 
 const MINUTE = 60_000;
 
-export async function registerAction(_prev: AuthState, formData: FormData): Promise<AuthState> {
+export async function registerAction(prev: AuthState, formData: FormData): Promise<AuthState> {
+  return { ...(await register(prev, formData)), values: keep(formData, ["name", "email"]) };
+}
+
+async function register(_prev: AuthState, formData: FormData): Promise<AuthState> {
   if (!rateLimit(`register:${await clientIp()}`, 5, 60 * MINUTE)) return { error: TOO_MANY };
 
   const parsed = registerSchema.safeParse({
@@ -57,7 +69,11 @@ export async function registerAction(_prev: AuthState, formData: FormData): Prom
   redirect(withFlash(safeNext(formData.get("next")), "register"));
 }
 
-export async function loginAction(_prev: AuthState, formData: FormData): Promise<AuthState> {
+export async function loginAction(prev: AuthState, formData: FormData): Promise<AuthState> {
+  return { ...(await login(prev, formData)), values: keep(formData, ["email"]) };
+}
+
+async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   if (!email || !password) return { error: "Please enter your email and password." };
@@ -99,10 +115,11 @@ function fingerprint(passwordHash: string): string {
   return createHash("sha256").update(passwordHash).digest("base64url").slice(0, 16);
 }
 
-export async function requestPasswordResetAction(
-  _prev: AuthState,
-  formData: FormData
-): Promise<AuthState> {
+export async function requestPasswordResetAction(prev: AuthState, formData: FormData): Promise<AuthState> {
+  return { ...(await requestReset(prev, formData)), values: keep(formData, ["email"]) };
+}
+
+async function requestReset(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!z.string().email().safeParse(email).success) return { error: "Enter a valid email." };
   if (!rateLimit(`reset:${await clientIp()}`, 5, 30 * MINUTE) || !rateLimit(`reset:${email}`, 3, 30 * MINUTE)) {

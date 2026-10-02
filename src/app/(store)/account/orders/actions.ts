@@ -4,7 +4,7 @@ import { lookupOrder, type OrderLookupResult } from "@/lib/order-lookup";
 import { courierLabel, trackingUrl } from "@/lib/couriers";
 import { clientIp, rateLimit, TOO_MANY } from "@/lib/rate-limit";
 
-export type LookupState =
+export type LookupState = (
   | { status: "idle" }
   | { status: "error"; message: string }
   | {
@@ -13,11 +13,18 @@ export type LookupState =
         courierName: string | null;
         trackUrl: string | null;
       };
-    };
+    }
+) & { values?: { order: string; email: string } };
 
 // Order tracking runs as a POST server action so the shopper's email never
 // ends up in the URL / browser history / server logs.
-export async function lookupOrderAction(_prev: LookupState, formData: FormData): Promise<LookupState> {
+export async function lookupOrderAction(prev: LookupState, formData: FormData): Promise<LookupState> {
+  // Keep the typed order number + email visible after submit (React 19 resets the form).
+  const values = { order: String(formData.get("order") ?? ""), email: String(formData.get("email") ?? "") };
+  return { ...(await lookup(prev, formData)), values };
+}
+
+async function lookup(_prev: LookupState, formData: FormData): Promise<LookupState> {
   const orderNumber = String(formData.get("order") ?? "").trim().toUpperCase();
   const email = String(formData.get("email") ?? "").trim();
   if (!orderNumber || !email) {

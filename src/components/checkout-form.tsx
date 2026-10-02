@@ -160,32 +160,32 @@ export function CheckoutForm({
           <Section step={1} title="Contact & Delivery">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className={labelCls}>Full name</label>
-                <input name="customerName" required defaultValue={defaults?.name} className={inputCls} />
+                <label htmlFor="co-customerName" className={labelCls}>Full name</label>
+                <input name="customerName" id="co-customerName" required defaultValue={defaults?.name} className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Email</label>
-                <input name="email" type="email" required defaultValue={defaults?.email} placeholder="you@example.com" className={inputCls} />
+                <label htmlFor="co-email" className={labelCls}>Email</label>
+                <input name="email" id="co-email" type="email" required defaultValue={defaults?.email} placeholder="you@example.com" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Phone</label>
-                <input name="phone" type="tel" required defaultValue={defaults?.phone} placeholder="03xx xxxxxxx" className={inputCls} />
+                <label htmlFor="co-phone" className={labelCls}>Phone</label>
+                <input name="phone" id="co-phone" type="tel" required defaultValue={defaults?.phone} placeholder="03xx xxxxxxx" className={inputCls} />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls}>Delivery address</label>
-                <input name="address" required placeholder="House #, street, area" className={inputCls} />
+                <label htmlFor="co-address" className={labelCls}>Delivery address</label>
+                <input name="address" id="co-address" required placeholder="House #, street, area" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>City</label>
-                <input name="city" required className={inputCls} />
+                <label htmlFor="co-city" className={labelCls}>City</label>
+                <input name="city" id="co-city" required className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Postal code (optional)</label>
-                <input name="postalCode" className={inputCls} />
+                <label htmlFor="co-postalCode" className={labelCls}>Postal code (optional)</label>
+                <input name="postalCode" id="co-postalCode" className={inputCls} />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls}>Order notes (optional)</label>
-                <textarea name="notes" rows={3} className={inputCls} />
+                <label htmlFor="co-notes" className={labelCls}>Order notes (optional)</label>
+                <textarea name="notes" id="co-notes" rows={3} className={inputCls} />
               </div>
             </div>
           </Section>
@@ -244,9 +244,10 @@ export function CheckoutForm({
               </label>
               {createAccount && (
                 <div className="mt-4">
-                  <label className={labelCls}>Choose a password</label>
+                  <label htmlFor="co-password" className={labelCls}>Choose a password</label>
                   <input
                     name="password"
+                    id="co-password"
                     type="password"
                     required
                     minLength={MIN_PASSWORD}
