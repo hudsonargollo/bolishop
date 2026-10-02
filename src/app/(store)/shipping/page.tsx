@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Emblem } from "@/components/brand/emblem";
 import { formatPrice } from "@/lib/format";
-import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING } from "@/lib/shipping";
+import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING, DELIVERY_TIME } from "@/lib/shipping";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/shipping" },
   title: "Shipping & Returns",
   description: "ZARIERA shipping options, delivery times, and our returns policy.",
 };
@@ -21,7 +23,7 @@ export default function ShippingPage() {
         <section>
           <h2 className="font-serif text-2xl font-semibold text-ink">Shipping</h2>
           <ul className="mt-4 space-y-3 text-ink/80">
-            <li>• Nationwide delivery across Pakistan, typically <strong>3–5 business days</strong>.</li>
+            <li>• Nationwide delivery across Pakistan, typically <strong>{DELIVERY_TIME}</strong>.</li>
             <li>• Flat shipping of <strong>{formatPrice(FLAT_SHIPPING)}</strong> — <strong>free</strong> on orders over {formatPrice(FREE_SHIPPING_THRESHOLD)}.</li>
             <li>• Every order is carefully packaged in ZARIERA signature packaging.</li>
             <li>• You&apos;ll receive an order confirmation, and our team may call to confirm delivery details.</li>
@@ -40,9 +42,9 @@ export default function ShippingPage() {
 
         <section className="rounded-xl border border-[var(--line)] bg-cream-soft p-6 text-sm text-muted">
           Need help with a return? Reach us via the{" "}
-          <a href="/contact" className="text-gold-deep hover:underline">
+          <Link href="/contact" className="text-gold-deep hover:underline">
             contact page
-          </a>{" "}
+          </Link>{" "}
           and quote your order number.
         </section>
       </div>

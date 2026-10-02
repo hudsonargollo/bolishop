@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMounted } from "@/lib/use-mounted";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,27 +25,21 @@ const HELP = [
 ];
 
 export function MobileMenu() {
-  const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  // The menu remembers which page it was opened on, so navigating anywhere
+  // closes it automatically (no effect needed).
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === pathname;
+  const setOpen = (v: boolean) => setOpenOn(v ? pathname : null);
+  const mounted = useMounted();
   const { count, ready } = useCart();
-
-  // Portal target is only available on the client
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Close whenever the route changes
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   // Lock body scroll + close on Escape while open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpenOn(null);
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
@@ -56,13 +51,13 @@ export function MobileMenu() {
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       {/* Hamburger */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Open menu"
         aria-expanded={open}
-        className="flex h-9 w-9 items-center justify-center text-maroon transition hover:text-gold-deep"
+        className="flex h-9 w-9 items-center justify-center text-maroon transition hover:text-gold-deep dark:text-ink"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
           <path d="M4 7h16M4 12h16M4 17h16" />
@@ -75,7 +70,7 @@ export function MobileMenu() {
       {mounted &&
         createPortal(
           <div
-            className={`fixed inset-0 z-50 overflow-hidden md:hidden ${
+            className={`fixed inset-0 z-50 overflow-hidden lg:hidden ${
               open ? "" : "pointer-events-none"
             }`}
           >
@@ -106,7 +101,7 @@ export function MobileMenu() {
           <button
             onClick={() => setOpen(false)}
             aria-label="Close menu"
-            className="flex h-9 w-9 items-center justify-center text-cream/80 transition hover:text-gold"
+            className="flex h-9 w-9 items-center justify-center text-light/80 transition hover:text-gold"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               <path d="M6 6l12 12M18 6L6 18" />
@@ -178,7 +173,7 @@ export function MobileMenu() {
           <Link
             href="/shop"
             onClick={() => setOpen(false)}
-            className="block rounded-full bg-maroon px-6 py-3 text-center text-sm font-medium uppercase tracking-[0.12em] text-cream transition hover:bg-maroon-2"
+            className="block rounded-full bg-maroon px-6 py-3 text-center text-sm font-medium uppercase tracking-[0.12em] text-light transition hover:bg-maroon-2"
           >
             Explore Collection
           </Link>

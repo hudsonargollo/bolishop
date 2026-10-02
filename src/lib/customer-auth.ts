@@ -1,16 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { timingSafeEqual, createHmac } from "node:crypto";
+import { createToken, readToken } from "./session-token";
 
-// Storefront customer sessions — separate cookie from the admin session.
-// HMAC-signed token, no external dependency.
+// Storefront customer sessions — separate cookie AND separate signing key from
+// the admin session (see ./session-token).
 
 const COOKIE = "zariera_customer";
 const TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
-
-function secret(): string {
-  return process.env.AUTH_SECRET || "dev-secret-change-me";
-}
 
 export type CustomerSession = {
   id: string;
@@ -18,31 +14,6 @@ export type CustomerSession = {
   name: string;
   exp: number;
 };
-
-function sign(data: string): string {
-  return createHmac("sha256", secret()).update(data).digest("base64url");
-}
-
-function createToken(session: CustomerSession): string {
-  const payload = Buffer.from(JSON.stringify(session)).toString("base64url");
-  return `${payload}.${sign(payload)}`;
-}
-
-function readToken(token: string): CustomerSession | null {
-  const [payload, sig] = token.split(".");
-  if (!payload || !sig) return null;
-  const expected = sign(payload);
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  try {
-    const session = JSON.parse(Buffer.from(payload, "base64url").toString()) as CustomerSession;
-    if (session.exp < Math.floor(Date.now() / 1000)) return null;
-    return session;
-  } catch {
-    return null;
-  }
-}
 
 export async function startCustomerSession(customer: {
   id: string;
@@ -56,7 +27,7 @@ export async function startCustomerSession(customer: {
     exp: Math.floor(Date.now() / 1000) + TTL_SECONDS,
   };
   const store = await cookies();
-  store.set(COOKIE, createToken(session), {
+  store.set(COOKIE, createToken("customer", session), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -73,12 +44,21 @@ export async function endCustomerSession(): Promise<void> {
 export async function getCustomerSession(): Promise<CustomerSession | null> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
-  return token ? readToken(token) : null;
+  return token ? readToken<CustomerSession>("customer", token) : null;
 }
 
-// Guards customer-only pages — redirects to login when not signed in.
-export async function requireCustomer(): Promise<CustomerSession> {
+// Only allow same-site relative paths as a post-login destination
+// (prevents open redirects like `?next=//evil.com`).
+export function safeNext(value: unknown, fallback = "/account"): string {
+  const v = typeof value === "string" ? value.trim() : "";
+  if (!v.startsWith("/") || v.startsWith("//") || v.startsWith("/\\")) return fallback;
+  if (v.startsWith("/login") || v.startsWith("/register")) return fallback;
+  return v;
+}
+
+// Guards customer-only pages — redirects to login (and back afterwards).
+export async function requireCustomer(returnTo = "/account"): Promise<CustomerSession> {
   const session = await getCustomerSession();
-  if (!session) redirect("/login");
+  if (!session) redirect(`/login?next=${encodeURIComponent(safeNext(returnTo))}`);
   return session;
 }

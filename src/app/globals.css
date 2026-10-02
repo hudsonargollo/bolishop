@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Dark mode is driven by <html data-theme="dark"> (set by the theme toggle) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* ============================================================
    ZARIERA — stainless steel & artificial jewelry brand theme
    Warm cream + deep wine + antique gold (per client mockup)
@@ -22,6 +25,8 @@
   --color-cream: #f4e8d5;      /* page background (warm ivory) */
   --color-cream-soft: #f9f0e2;
   --color-sand: #e8d7ba;
+  --color-surface: #ffffff;    /* cards / inputs (flips in dark mode) */
+  --color-light: #f4e8d5;      /* fixed ivory — light text on dark buttons/footer (never flips) */
   --color-muted: #8a6f63;      /* muted text on light */
   --color-muted-dark: #dcc6ad; /* muted text on dark maroon */
 
@@ -31,12 +36,46 @@
 }
 
 :root {
+  color-scheme: light;
   --background: #f4e8d5;
   --foreground: #3a231e;
   /* Framing lines are maroon-tinted (classic, per mockup) */
   --line: rgba(91, 26, 43, 0.18);
   --line-strong: rgba(91, 26, 43, 0.4);
   --frame: rgba(91, 26, 43, 0.7);
+}
+
+/* ---------- Dark theme (toggle sets data-theme="dark" on <html>) ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Deep wine so full bg-maroon sections stay elegant (not washed) on dark.
+     Maroon-as-text/icon contrast is handled per-element with dark: variants. */
+  --color-maroon: #4a1420;
+  --color-maroon-2: #3a0f18;
+  --color-wine-deep: #2a0b12;
+  --color-panel: #241319;
+  --color-panel-2: #2c1720;
+
+  /* Gold brightens for dark backgrounds */
+  --color-gold: #cda65a;
+  --color-gold-hi: #ecd08c;
+  --color-gold-deep: #d8b365;
+
+  /* Neutrals invert: light text on a deep, warm-dark ground */
+  --color-ink: #f3e7d6;
+  --color-cream: #160c10;
+  --color-cream-soft: #1e1218;
+  --color-sand: #2a1a20;
+  --color-surface: #241319;
+  --color-muted: #b99f90;
+  --color-muted-dark: #e0cbb2;
+
+  --background: #160c10;
+  --foreground: #f3e7d6;
+  --line: rgba(230, 205, 139, 0.14);
+  --line-strong: rgba(230, 205, 139, 0.30);
+  --frame: rgba(230, 205, 139, 0.5);
 }
 
 * {
@@ -142,7 +181,33 @@ p {
   animation: floaty 4s ease-in-out infinite;
 }
 
+/* Toast slide-in (used by the toast system + admin order alerts) */
+@keyframes toastin {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Support-chat panel entrance */
+@keyframes chatin {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-chatin {
+  animation: chatin 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: bottom right;
+}
+/* Soft attention pulse for the chat launcher */
+@keyframes chatpulse {
+  0% { box-shadow: 0 0 0 0 rgba(195, 154, 78, 0.5); }
+  70% { box-shadow: 0 0 0 14px rgba(195, 154, 78, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(195, 154, 78, 0); }
+}
+.animate-chatpulse {
+  animation: chatpulse 2.6s ease-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-marquee, .animate-marquee-slow, .animate-marquee-slow-rev, .animate-floaty { animation: none; }
+  .animate-marquee, .animate-marquee-slow, .animate-marquee-slow-rev, .animate-floaty,
+  .animate-chatin, .animate-chatpulse { animation: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
 }

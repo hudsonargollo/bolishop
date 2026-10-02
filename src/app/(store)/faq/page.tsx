@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Emblem } from "@/components/brand/emblem";
+import { DELIVERY_TIME } from "@/lib/shipping";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/faq" },
   title: "FAQ",
   description: "Answers to common questions about ordering, payment, shipping and returns at ZARIERA.",
 };
@@ -17,7 +20,7 @@ const FAQS = [
   },
   {
     q: "How long does delivery take?",
-    a: "Orders are typically delivered within 3–5 business days nationwide. Our team may call to confirm delivery details.",
+    a: `Orders are typically delivered within ${DELIVERY_TIME} nationwide. Our team may call to confirm delivery details.`,
   },
   {
     q: "Can I track my order?",
@@ -62,9 +65,9 @@ export default function FaqPage() {
 
       <p className="mt-10 text-center text-sm text-muted">
         Still have a question?{" "}
-        <a href="/contact" className="text-gold-deep hover:underline">
+        <Link href="/contact" className="text-gold-deep hover:underline">
           Contact us
-        </a>
+        </Link>
         .
       </p>
     </div>

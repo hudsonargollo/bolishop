@@ -1,9 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+/* eslint-disable @next/next/no-img-element */
+
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { ProductFormState } from "@/app/admin/(dashboard)/products/actions";
 import type { AdminProductDetail } from "@/lib/admin-data";
+import { useToast } from "@/components/ui/toast";
 
 type Action = (prev: ProductFormState, formData: FormData) => Promise<ProductFormState>;
 
@@ -19,6 +22,11 @@ export function ProductForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
+  const toast = useToast();
+
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+  }, [state, toast]);
 
   return (
     <form action={formAction} className="max-w-2xl space-y-5">
@@ -62,8 +70,21 @@ export function ProductForm({
         </Row>
       </div>
 
-      <Row label="Image URLs" hint="One per line or comma-separated (optional)">
-        <textarea name="images" rows={2} defaultValue={product?.images.join("\n") ?? ""} className={input} />
+      <Row
+        label="Specifications"
+        hint={'One per line as “Label: Value”. These show in the product page’s Highlights & specs table.'}
+      >
+        <textarea
+          name="specs"
+          rows={6}
+          defaultValue={product?.specs ?? ""}
+          className={input}
+          placeholder={`Metal type: Sterling Silver\nFinish: 18K Gold-plated\nStone: Cubic Zirconia\nClasp: Lobster clasp\nSize: Adjustable, 7"+2"\nWeight: 12 g`}
+        />
+      </Row>
+
+      <Row label="Product images" hint="Upload from your device — first image is the main one.">
+        <ImageUploader initial={product?.images ?? []} />
       </Row>
 
       <div className="flex gap-6">
@@ -78,14 +99,14 @@ export function ProductForm({
       </div>
 
       {state.error && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
       )}
 
       <div className="flex items-center gap-3 pt-2">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-maroon px-8 py-3 text-sm font-medium uppercase tracking-[0.12em] text-cream transition hover:bg-maroon-2 disabled:opacity-60"
+          className="rounded-full bg-maroon px-8 py-3 text-sm font-medium uppercase tracking-[0.12em] text-light transition hover:bg-maroon-2 disabled:opacity-60"
         >
           {pending ? "Saving…" : submitLabel}
         </button>
@@ -98,7 +119,108 @@ export function ProductForm({
 }
 
 const input =
-  "w-full rounded-md border border-[var(--line-strong)] bg-cream-soft px-3.5 py-2.5 text-sm outline-none focus:border-gold";
+  "w-full rounded-lg border border-[var(--line-strong)] bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.2)]";
+
+function ImageUploader({ initial }: { initial: string[] }) {
+  const [urls, setUrls] = useState<string[]>(initial);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [drag, setDrag] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function upload(files: FileList | File[] | null) {
+    const list = files ? Array.from(files) : [];
+    if (!list.length) return;
+    setErr(null);
+    setBusy(true);
+    for (const f of list) {
+      try {
+        const fd = new FormData();
+        fd.append("file", f);
+        const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
+        const d = await r.json();
+        if (!r.ok || !d.ok) throw new Error(d.error || "Upload failed");
+        setUrls((prev) => [...prev, d.url]);
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Upload failed");
+      }
+    }
+    setBusy(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function remove(u: string) {
+    setUrls((prev) => prev.filter((x) => x !== u));
+  }
+  function move(u: string, dir: -1 | 1) {
+    setUrls((prev) => {
+      const i = prev.indexOf(u);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  }
+
+  return (
+    <div>
+      {/* value sent to the server action (unchanged contract: newline-joined) */}
+      <input type="hidden" name="images" value={urls.join("\n")} />
+
+      {urls.length > 0 && (
+        <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+          {urls.map((u, i) => (
+            <div key={u} className="group relative aspect-square overflow-hidden rounded-lg border border-[var(--line)] bg-sand">
+              <img src={u} alt="" className="h-full w-full object-cover" />
+              {i === 0 && (
+                <span className="absolute left-1 top-1 rounded bg-maroon px-1.5 py-0.5 text-[0.55rem] font-semibold uppercase tracking-wide text-light">
+                  Main
+                </span>
+              )}
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/45 px-1.5 py-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => move(u, -1)} disabled={i === 0} className="text-light disabled:opacity-30" aria-label="Move left">‹</button>
+                  <button type="button" onClick={() => move(u, 1)} disabled={i === urls.length - 1} className="text-light disabled:opacity-30" aria-label="Move right">›</button>
+                </div>
+                <button type="button" onClick={() => remove(u)} className="text-light hover:text-red-300" aria-label="Remove">✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); }}
+        onClick={() => fileRef.current?.click()}
+        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-8 text-center transition ${
+          drag ? "border-gold bg-gold/10" : "border-[var(--line-strong)] bg-surface hover:border-gold"
+        }`}
+      >
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold-deep)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 16V4M7 9l5-5 5 5" />
+          <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+        </svg>
+        <p className="text-sm text-ink">
+          {busy ? "Uploading…" : "Click to upload or drag & drop images"}
+        </p>
+        <p className="text-xs text-muted">JPG, PNG, WEBP · up to 5 MB each</p>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => upload(e.target.files)}
+        />
+      </div>
+
+      {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
+    </div>
+  );
+}
 
 function Row({
   label,

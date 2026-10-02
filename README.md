@@ -74,9 +74,11 @@ orders stay accurate.
 | `/admin/orders` | Order list |
 | `/admin/orders/[id]` | Order detail + update status / payment status |
 
-> **Login:** uses `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env` (bootstrap admin),
-> or a `User` record in the database. **Change these before deploy.** Sessions are
-> HMAC-signed httpOnly cookies (`AUTH_SECRET`). No external auth dependency.
+> **Login:** admins are `User` records in the database — create/update one with
+> `npm run db:create-admin` (reads `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`).
+> Sessions are HMAC-signed httpOnly cookies (`AUTH_SECRET`, **required in
+> production**); admin and customer tokens use separate signing keys, and every
+> admin request re-checks the account in the DB. Logins are rate-limited.
 
 ### Theme
 
@@ -107,12 +109,15 @@ Tokens live in `src/app/globals.css`.
 - **Cash on Delivery** — works out of the box.
 - **PayFast** and **Safepay** — online card/wallet payments. Integration lives in
   `src/lib/payments.ts`. Add the client's merchant credentials to `.env`
-  (`PAYFAST_MERCHANT_ID`, `PAYFAST_SECURED_KEY`, `SAFEPAY_API_KEY`, …) to activate.
-  Until then, selecting an online method safely falls back to a pending order.
-- Gateway callbacks: `POST /api/payments/payfast/callback`,
-  `POST /api/payments/safepay/webhook` (configure these URLs in each gateway
-  dashboard). **Verify signatures with live keys before going live** — marked with
-  `TODO` in the callback files.
+  (`PAYFAST_MERCHANT_ID`, `PAYFAST_SECURED_KEY`, `SAFEPAY_API_KEY`,
+  `SAFEPAY_WEBHOOK_SECRET`) to activate. Until then the online options are
+  **hidden** at checkout (and rejected by the API).
+- Gateway callbacks: `/api/payments/payfast/callback` (GET redirect + POST IPN,
+  verified with PayFast's `validation_hash`) and `POST /api/payments/safepay/webhook`
+  (verified with `X-SFPY-SIGNATURE`). Unverified callbacks are ignored; payment
+  state changes are idempotent; failed/cancelled payments release stock.
+  **Test both in sandbox with the client's keys before going live** — confirm the
+  signature formulas against their merchant docs.
 
 ### SEO (Phase 4)
 
@@ -127,11 +132,16 @@ Tokens live in `src/app/globals.css`.
 deploy. Run `npx prisma migrate deploy` against the production database.
 
 **Docker / VPS:** the app builds to a standalone server (`output: "standalone"`).
+Use a **single long-running instance** (live order alerts + rate limits are in-memory).
 
 ```bash
 docker build -t zariera .
-docker run -p 3000:3000 --env-file .env zariera
+docker run -p 3000:3000 --env-file .env -v zariera-uploads:/app/uploads zariera
 ```
+
+> Product images uploaded from the admin are stored in `UPLOAD_DIR` (default
+> `./uploads`) and served from `/uploads/products/…` — keep that folder on a
+> persistent volume.
 
 Before first launch on a fresh database:
 
@@ -140,9 +150,12 @@ npx prisma migrate deploy   # apply schema
 npm run db:seed             # optional: seed categories + sample products
 ```
 
-**Pre-launch checklist:** set a strong `AUTH_SECRET`, change `ADMIN_EMAIL` /
-`ADMIN_PASSWORD` (or create a DB admin user), set `NEXT_PUBLIC_SITE_URL`, add the
-payment credentials, and point the gateway callback URLs at the deployed domain.
+**Pre-launch checklist:** set a strong `AUTH_SECRET`, create the admin with
+`npm run db:create-admin`, set `NEXT_PUBLIC_SITE_URL`, fill the contact /
+social `NEXT_PUBLIC_*` values, add payment + courier + SMTP credentials, point the
+gateway callback URLs at the deployed domain, add real customer reviews (the
+testimonials section stays hidden until you do), and remove the `QATEST-` demo
+orders (see `docs/AI-HANDOFF.md`).
 
 ## Project scope (Standard package)
 

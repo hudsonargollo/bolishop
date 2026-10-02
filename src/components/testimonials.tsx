@@ -1,3 +1,6 @@
+// ⚠️ PRE-LAUNCH SAMPLE REVIEWS (restored on request, 2026-10-02).
+// These names, ratings, "Verified buyer" and "4.9/5 from 500+" are placeholders —
+// replace REVIEWS with real customer reviews before go-live (see docs/AI-HANDOFF.md).
 import { Emblem } from "./brand/emblem";
 
 type Review = {
@@ -52,13 +55,13 @@ const ROW_TWO = REVIEWS.slice(3);
 
 export function Testimonials() {
   return (
-    <section className="bg-maroon py-20 text-cream">
+    <section className="bg-maroon py-20 text-light">
       {/* Header */}
       <div className="mx-auto max-w-6xl px-5 text-center">
         <Emblem size={40} className="mx-auto text-gold" />
         <span className="eyebrow mt-4 block text-gold">Testimonials</span>
         <h2 className="mt-3 font-serif text-4xl font-bold sm:text-5xl">Loved by our clients</h2>
-        <div className="mt-4 flex items-center justify-center gap-3 text-sm text-cream/80">
+        <div className="mt-4 flex items-center justify-center gap-3 text-sm text-light/80">
           <Stars rating={5} />
           <span>
             <strong className="text-gold">4.9/5</strong> from 500+ happy clients
@@ -94,7 +97,7 @@ function ReviewCard({ review: r }: { review: Review }) {
   return (
     <figure className="flex w-[300px] shrink-0 flex-col rounded-2xl border border-[rgba(230,205,139,0.25)] bg-[rgba(255,255,255,0.04)] p-7 sm:w-[360px]">
       <Stars rating={r.rating} />
-      <blockquote className="mt-4 flex-1 font-serif text-lg italic leading-relaxed text-cream/90">
+      <blockquote className="mt-4 flex-1 font-serif text-lg italic leading-relaxed text-light/90">
         “{r.text}”
       </blockquote>
       <figcaption className="mt-6 flex items-center gap-3 border-t border-[rgba(230,205,139,0.18)] pt-5">
@@ -102,8 +105,8 @@ function ReviewCard({ review: r }: { review: Review }) {
           {r.name.charAt(0)}
         </span>
         <span>
-          <span className="block font-medium text-cream">{r.name}</span>
-          <span className="flex items-center gap-1 text-xs text-cream/60">
+          <span className="block font-medium text-light">{r.name}</span>
+          <span className="flex items-center gap-1 text-xs text-light/60">
             {r.place}
             <VerifiedIcon />
             Verified buyer

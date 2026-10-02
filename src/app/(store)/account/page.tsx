@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireCustomer } from "@/lib/customer-auth";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
-import { StatusBadge } from "@/components/admin/status-badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Emblem } from "@/components/brand/emblem";
 import { logoutAction } from "../auth-actions";
 
@@ -23,11 +23,14 @@ type OrderRow = {
   itemCount: number;
 };
 
-async function getMyOrders(customerId: string, email: string): Promise<OrderRow[]> {
+async function getMyOrders(customerId: string): Promise<OrderRow[]> {
   try {
     const rows = await prisma.order.findMany({
-      // Linked orders (customerId) plus any guest orders under the same email.
-      where: { OR: [{ customerId }, { email }] },
+      // Only orders linked to this account. Guest orders placed under the same
+      // email are NOT listed: email ownership isn't verified at sign-up, so
+      // matching by email would expose a stranger's orders. Guests track their
+      // orders with order number + email on /account/orders.
+      where: { customerId },
       include: { items: { select: { quantity: true } } },
       orderBy: { createdAt: "desc" },
     });
@@ -46,7 +49,7 @@ async function getMyOrders(customerId: string, email: string): Promise<OrderRow[
 
 export default async function AccountPage() {
   const session = await requireCustomer();
-  const orders = await getMyOrders(session.id, session.email);
+  const orders = await getMyOrders(session.id);
   const firstName = session.name.split(" ")[0];
 
   return (
@@ -83,7 +86,7 @@ export default async function AccountPage() {
           </dl>
           <Link
             href="/shop"
-            className="mt-5 block rounded-full bg-maroon px-5 py-2.5 text-center text-sm font-medium text-cream transition hover:bg-maroon-2"
+            className="mt-5 block rounded-full bg-maroon px-5 py-2.5 text-center text-sm font-medium text-light transition hover:bg-maroon-2"
           >
             Continue shopping
           </Link>
@@ -134,9 +137,9 @@ export default async function AccountPage() {
           )}
 
           <p className="mt-6 text-sm text-muted">
-            Looking for a specific order?{" "}
+            Placed an order as a guest?{" "}
             <Link href="/account/orders" className="text-gold-deep hover:underline">
-              Track by order number
+              Track it by order number
             </Link>
           </p>
         </section>

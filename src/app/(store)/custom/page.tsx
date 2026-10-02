@@ -4,6 +4,7 @@ import { OrnateFrame } from "@/components/ornate-frame";
 import { Emblem } from "@/components/brand/emblem";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/custom" },
   title: "Custom Jewelry",
   description: "Design a one-of-a-kind piece with ZARIERA's custom jewelry service.",
 };
@@ -30,8 +31,8 @@ export default function CustomPage() {
             something uniquely yours.
           </p>
           <Link
-            href="/contact"
-            className="mt-9 inline-block rounded-full bg-maroon px-9 py-3.5 text-sm font-medium uppercase tracking-[0.12em] text-cream transition hover:bg-maroon-2"
+            href="/contact?topic=custom"
+            className="mt-9 inline-block rounded-full bg-maroon px-9 py-3.5 text-sm font-medium uppercase tracking-[0.12em] text-light transition hover:bg-maroon-2"
           >
             Start Your Design
           </Link>

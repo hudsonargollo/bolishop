@@ -233,6 +233,16 @@ const CATEGORIES = [
 async function main() {
   console.log("Importing ZARIERA products…");
 
+  // ⚠️ DESTRUCTIVE: wipes ALL orders and products. Pre-launch only — refuses to
+  // run unless explicitly confirmed, and never against a production env.
+  if (process.env.NODE_ENV === "production" || process.env.CONFIRM_WIPE !== "yes") {
+    console.error(
+      "Refusing to run: this deletes ALL orders and products.\n" +
+        "Re-run with CONFIRM_WIPE=yes (and never on the live database)."
+    );
+    process.exit(1);
+  }
+
   // Clean slate (pre-launch sample data)
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();

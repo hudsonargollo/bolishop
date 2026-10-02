@@ -3,6 +3,7 @@ import { getProducts } from "@/lib/catalog";
 import { ProductGrid } from "@/components/product-grid";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: true },
   title: "Search",
   description: "Search the ZARIERA collection.",
 };
@@ -25,7 +26,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
           defaultValue={q}
           placeholder="Search necklaces, rings, materials…"
           autoFocus
-          className="w-full rounded-full border border-[var(--line-strong)] bg-white/70 px-5 py-3 text-sm outline-none focus:border-gold"
+          className="w-full rounded-full border border-[var(--line-strong)] bg-surface/70 px-5 py-3 text-sm outline-none focus:border-gold"
         />
         <button
           type="submit"

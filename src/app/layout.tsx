@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Jost } from "next/font/google";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 import { CartProvider } from "@/components/cart/cart-provider";
+import { ToastProvider } from "@/components/ui/toast";
+import { FlashToast } from "@/components/ui/flash-toast";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -17,7 +20,6 @@ const jost = Jost({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -39,7 +41,6 @@ export const metadata: Metadata = {
     "hypoallergenic jewelry",
   ],
   applicationName: "ZARIERA",
-  alternates: { canonical: "/" },
   openGraph: {
     title: "ZARIERA — Every Jewel Tells a Story",
     description: "Premium stainless steel & artificial jewelry — elegant, gold-plated, made to last.",
@@ -58,10 +59,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${cormorant.variable} ${jost.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-cream text-ink">
-        <CartProvider>{children}</CartProvider>
+        {/* Apply saved theme before paint to avoid a flash of the wrong theme */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('zariera-theme');if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}else if(t==='light'){document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();",
+          }}
+        />
+        <ToastProvider>
+          <FlashToast />
+          <CartProvider>{children}</CartProvider>
+        </ToastProvider>
       </body>
     </html>
   );

@@ -18,6 +18,7 @@ const schema = z.object({
   sku: z.string().optional(),
   stock: z.coerce.number().int().min(0),
   material: z.string().optional(),
+  specs: z.string().optional(),
   categoryId: z.string().min(1, "Choose a category"),
   images: z.string().optional(),
   featured: z.boolean(),
@@ -34,6 +35,7 @@ function parse(formData: FormData) {
     sku: formData.get("sku"),
     stock: formData.get("stock"),
     material: formData.get("material"),
+    specs: formData.get("specs"),
     categoryId: formData.get("categoryId"),
     images: formData.get("images"),
     featured: formData.get("featured") === "on",
@@ -51,6 +53,7 @@ function toData(d: z.infer<typeof schema>) {
     sku: d.sku || null,
     stock: d.stock,
     material: d.material || null,
+    specs: d.specs?.trim() || null,
     categoryId: d.categoryId,
     images: (d.images ?? "")
       .split(/[\n,]/)
@@ -75,7 +78,7 @@ export async function createProduct(
     return { error: dbError(err) };
   }
   revalidatePath("/admin/products");
-  redirect("/admin/products");
+  redirect("/admin/products?flash=product-created");
 }
 
 export async function updateProduct(
@@ -93,17 +96,21 @@ export async function updateProduct(
     return { error: dbError(err) };
   }
   revalidatePath("/admin/products");
-  redirect("/admin/products");
+  redirect("/admin/products?flash=product-updated");
 }
 
 export async function deleteProduct(id: string): Promise<void> {
   await requireAdmin();
+  let flash = "product-deleted";
   try {
     await prisma.product.delete({ where: { id } });
-  } catch {
-    /* ignore — likely referenced by an order or DB down */
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    // P2003 = foreign key: the product appears in past orders (kept for history).
+    flash = /P2003|Foreign key/i.test(msg) ? "product-in-use" : "delete-failed";
   }
   revalidatePath("/admin/products");
+  redirect(`/admin/products?flash=${flash}`);
 }
 
 function dbError(err: unknown): string {

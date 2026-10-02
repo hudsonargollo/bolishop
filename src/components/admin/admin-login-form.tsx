@@ -1,22 +1,28 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { loginAction, type LoginState } from "@/app/admin/login/actions";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { PasswordInput } from "@/components/auth/password-input";
+import { useToast } from "@/components/ui/toast";
 
 const initial: LoginState = {};
 
 const input =
-  "w-full rounded-lg border border-[var(--line-strong)] bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.22)]";
+  "w-full rounded-lg border border-[var(--line-strong)] bg-surface px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.22)]";
 
 const label = "mb-1.5 block text-xs font-medium uppercase tracking-[0.12em] text-muted";
 
 const submitBtn =
-  "w-full rounded-full bg-maroon px-6 py-3.5 text-sm font-medium uppercase tracking-[0.14em] text-cream shadow-[0_14px_34px_-14px_rgba(91,26,43,0.7)] transition hover:bg-maroon-2 disabled:opacity-60";
+  "w-full rounded-full bg-maroon px-6 py-3.5 text-sm font-medium uppercase tracking-[0.14em] text-light shadow-[0_14px_34px_-14px_rgba(91,26,43,0.7)] transition hover:bg-maroon-2 disabled:opacity-60";
 
 export function AdminLoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, initial);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+  }, [state, toast]);
 
   return (
     <AuthShell backHref="/" backLabel="Back to store" eyebrow="Management dashboard">

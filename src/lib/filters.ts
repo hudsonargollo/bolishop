@@ -10,7 +10,7 @@ function num(v: string | string[] | undefined): number | undefined {
   const s = first(v);
   if (s == null || s === "") return undefined;
   const n = Number(s);
-  return Number.isFinite(n) ? n : undefined;
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
 // Turns URL search params into a validated ProductFilters object.
@@ -21,11 +21,18 @@ export function parseProductFilters(sp: RawParams): ProductFilters {
       ? sortRaw
       : "newest";
 
+  let minPrice = num(sp.minPrice);
+  let maxPrice = num(sp.maxPrice);
+  // A reversed range (min > max) would match nothing — treat it as swapped.
+  if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
+    [minPrice, maxPrice] = [maxPrice, minPrice];
+  }
+
   return {
-    q: first(sp.q),
+    q: first(sp.q)?.trim().slice(0, 100) || undefined,
     material: first(sp.material),
-    minPrice: num(sp.minPrice),
-    maxPrice: num(sp.maxPrice),
+    minPrice,
+    maxPrice,
     sort,
   };
 }

@@ -4,6 +4,9 @@ import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
 // Next.js imports so it can be used from standalone scripts (e.g. create-admin)
 // as well as from the app.
 
+// Minimum length for customer passwords (register, checkout sign-up, reset).
+export const MIN_PASSWORD = 8;
+
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");

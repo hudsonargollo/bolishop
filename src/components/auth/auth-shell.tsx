@@ -18,7 +18,7 @@ export function AuthShell({
   children,
   backHref = "/",
   backLabel = "Back to store",
-  eyebrow = "Fine everyday jewellery",
+  eyebrow = "Fine everyday jewelry",
 }: Props) {
   return (
     <section
@@ -46,7 +46,7 @@ export function AuthShell({
       {/* Back link */}
       <Link
         href={backHref}
-        className="group absolute left-6 top-6 z-10 inline-flex items-center gap-2 rounded-full border border-[rgba(230,205,139,0.3)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-xs font-medium uppercase tracking-[0.14em] text-cream/85 backdrop-blur transition hover:border-gold hover:text-gold sm:left-10 sm:top-10"
+        className="group absolute left-6 top-6 z-10 inline-flex items-center gap-2 rounded-full border border-[rgba(230,205,139,0.3)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-xs font-medium uppercase tracking-[0.14em] text-light/85 backdrop-blur transition hover:border-gold hover:text-gold sm:left-10 sm:top-10"
       >
         <span className="transition-transform group-hover:-translate-x-0.5">‹</span>
         {backLabel}

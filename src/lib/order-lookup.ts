@@ -12,6 +12,8 @@ export type OrderLookupResult =
         paymentMethod: string;
         total: number;
         createdAt: string;
+        courier: string | null;
+        trackingNumber: string | null;
         items: OrderLookupItem[];
       };
     }
@@ -26,7 +28,8 @@ export async function lookupOrder(
     const o = await prisma.order.findFirst({
       where: {
         orderNumber: orderNumber.trim(),
-        email: email.trim().toLowerCase(),
+        // Older orders stored the email as typed — match case-insensitively.
+        email: { equals: email.trim(), mode: "insensitive" },
       },
       include: { items: true },
     });
@@ -40,6 +43,8 @@ export async function lookupOrder(
         paymentMethod: o.paymentMethod,
         total: Number(o.total),
         createdAt: o.createdAt.toISOString(),
+        courier: o.courier,
+        trackingNumber: o.trackingNumber,
         items: o.items.map((i) => ({
           name: i.name,
           quantity: i.quantity,

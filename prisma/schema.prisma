@@ -35,6 +35,7 @@ model Product {
   stock          Int         @default(0)
   images         String[]    @default([])
   material       String?     // e.g. "22K Gold", "Sterling Silver"
+  specs          String?     // per-product specs, one "Label: Value" per line
   featured       Boolean     @default(false)
   active         Boolean     @default(true)
   category       Category    @relation(fields: [categoryId], references: [id])
@@ -77,6 +78,8 @@ model Order {
   status        OrderStatus   @default(PENDING)
   paymentMethod PaymentMethod @default(COD)
   paymentStatus PaymentStatus @default(PENDING)
+  // Gateway reference (e.g. Safepay tracker) used to match webhooks to orders
+  paymentRef    String?
 
   // Customer (guest checkout supported; linked to an account when signed in)
   customerName  String
@@ -96,6 +99,11 @@ model Order {
   shipping      Decimal       @default(0) @db.Decimal(10, 2)
   total         Decimal       @db.Decimal(10, 2)
 
+  // Courier shipment (Leopards / TCS)
+  courier         String?
+  trackingNumber  String?
+  shippedAt       DateTime?
+
   items         OrderItem[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -103,6 +111,7 @@ model Order {
   @@index([status])
   @@index([email])
   @@index([customerId])
+  @@index([paymentRef])
 }
 
 model OrderItem {
@@ -146,4 +155,27 @@ model Customer {
   orders       Order[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// ---------- Inbound (contact form + newsletter) ----------
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  topic     String?  // e.g. "custom", "notify:<category>"
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String?  // where they signed up (newsletter, notify:<category>)
+  createdAt DateTime @default(now())
 }

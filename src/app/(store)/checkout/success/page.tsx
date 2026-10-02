@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { formatPrice } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
 import { ClearCart } from "@/components/cart/clear-cart";
 
 export const metadata: Metadata = {
@@ -8,18 +10,58 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+export const dynamic = "force-dynamic";
+
+type OrderSummary = {
+  orderNumber: string;
+  total: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  status: string;
+  productIds: string[];
+};
+
+async function findOrder(orderNumber: string): Promise<OrderSummary | null> {
+  try {
+    const o = await prisma.order.findUnique({
+      where: { orderNumber },
+      select: {
+        orderNumber: true,
+        total: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        status: true,
+        items: { select: { productId: true } },
+      },
+    });
+    return o
+      ? { ...o, total: Number(o.total), productIds: o.items.map((i) => i.productId) }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function SuccessPage({
   searchParams,
 }: PageProps<"/checkout/success">) {
   const sp = await searchParams;
-  const order = (Array.isArray(sp.order) ? sp.order[0] : sp.order) ?? null;
-  const totalRaw = Array.isArray(sp.total) ? sp.total[0] : sp.total;
-  const total = totalRaw ? Number(totalRaw) : null;
+  const orderNumber = ((Array.isArray(sp.order) ? sp.order[0] : sp.order) ?? "").trim();
   const accountCreated = (Array.isArray(sp.account) ? sp.account[0] : sp.account) === "1";
+
+  // Everything shown here comes from the database, never from the URL.
+  const order = orderNumber ? await findOrder(orderNumber) : null;
+  if (!order) redirect("/cart");
+
+  const online = order.paymentMethod !== "COD";
+  if (online && (order.paymentStatus === "FAILED" || order.status === "CANCELLED")) {
+    redirect("/checkout?payment=failed");
+  }
+  const awaitingPayment = online && order.paymentStatus !== "PAID";
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-24 text-center">
-      <ClearCart />
+      <ClearCart productIds={order.productIds} />
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-gold-hi to-gold">
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#260810" strokeWidth="2.6">
           <path d="M5 12l5 5L20 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -28,22 +70,30 @@ export default async function SuccessPage({
 
       <h1 className="mt-8 font-serif text-4xl font-semibold text-ink">Thank you!</h1>
       <p className="mt-3 text-muted">
-        Your order has been placed. A confirmation will be sent to your email.
+        {awaitingPayment
+          ? "Your order has been received. We're confirming your payment with the provider — you'll get an email as soon as it's confirmed."
+          : "Your order has been placed. A confirmation will be sent to your email."}
       </p>
 
-      <div className="mx-auto mt-8 max-w-sm rounded-xl border border-[var(--line)] bg-white/70 p-6 text-sm">
-        {order && (
-          <div className="flex justify-between">
-            <span className="text-muted">Order number</span>
-            <span className="font-medium text-ink">{order}</span>
-          </div>
-        )}
-        {total != null && (
-          <div className="mt-3 flex justify-between">
-            <span className="text-muted">Total</span>
-            <span className="font-medium text-ink">{formatPrice(total)}</span>
-          </div>
-        )}
+      <div className="mx-auto mt-8 max-w-sm rounded-xl border border-[var(--line)] bg-surface/70 p-6 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted">Order number</span>
+          <span className="font-medium text-ink">{order.orderNumber}</span>
+        </div>
+        <div className="mt-3 flex justify-between">
+          <span className="text-muted">Total</span>
+          <span className="font-medium text-ink">{formatPrice(order.total)}</span>
+        </div>
+        <div className="mt-3 flex justify-between">
+          <span className="text-muted">Payment</span>
+          <span className="font-medium text-ink">
+            {online
+              ? order.paymentStatus === "PAID"
+                ? "Paid online"
+                : "Confirming…"
+              : "Cash on Delivery"}
+          </span>
+        </div>
       </div>
 
       {accountCreated && (
@@ -62,16 +112,25 @@ export default async function SuccessPage({
       )}
 
       <p className="mx-auto mt-6 max-w-md text-sm text-muted">
-        For Cash on Delivery, please keep the amount ready at delivery. Our team will call
-        to confirm your order.
+        {online
+          ? "Keep your order number handy — you can track it anytime from the Order Status page."
+          : "For Cash on Delivery, please keep the amount ready at delivery. Our team will call to confirm your order."}
       </p>
 
-      <Link
-        href="/shop"
-        className="mt-8 inline-block rounded-full bg-gradient-to-r from-gold-hi to-gold px-8 py-3 text-sm font-medium text-maroon transition hover:opacity-90"
-      >
-        Continue Shopping
-      </Link>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <Link
+          href="/shop"
+          className="inline-block rounded-full bg-gradient-to-r from-gold-hi to-gold px-8 py-3 text-sm font-medium text-maroon transition hover:opacity-90"
+        >
+          Continue Shopping
+        </Link>
+        <Link
+          href="/account/orders"
+          className="inline-block rounded-full border border-[var(--line-strong)] px-8 py-3 text-sm font-medium text-ink transition hover:border-gold hover:text-gold-deep"
+        >
+          Track Order
+        </Link>
+      </div>
     </div>
   );
 }

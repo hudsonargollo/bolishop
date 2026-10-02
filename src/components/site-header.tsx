@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { HeaderCart } from "./cart/header-cart";
 import { Emblem } from "./brand/emblem";
 import { MobileMenu } from "./mobile-menu";
+import { ThemeToggle } from "./theme-toggle";
 
 const NAV = [
   { label: "Home", href: "/" },
@@ -14,6 +15,10 @@ const NAV = [
   { label: "Contact", href: "/contact" },
 ];
 
+// Shared style for the header's circular icon buttons
+const iconBtn =
+  "relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] bg-surface/60 text-maroon transition hover:border-gold hover:bg-gold/10 hover:text-gold-deep dark:text-ink";
+
 export function SiteHeader() {
   const pathname = usePathname();
 
@@ -22,22 +27,22 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 bg-cream/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5">
+      <div className="flex w-full items-center justify-between gap-3 px-4 py-3.5 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-10">
         {/* Brand */}
-        <Link href="/" className="group flex shrink-0 items-center gap-2.5 text-gold-deep">
-          <Emblem size={30} className="transition-transform duration-300 group-hover:scale-105" />
-          <span className="flex flex-col leading-none">
-            <span className="gold-text font-serif text-2xl font-bold tracking-[0.26em]">
+        <Link href="/" className="group flex min-w-0 shrink items-center gap-2 text-gold-deep sm:gap-2.5 lg:shrink-0 lg:justify-self-start">
+          <Emblem size={28} className="shrink-0 transition-transform duration-300 group-hover:scale-105" />
+          <span className="flex min-w-0 flex-col leading-none">
+            <span className="gold-text truncate font-serif text-lg font-bold tracking-[0.2em] sm:text-2xl sm:tracking-[0.26em]">
               ZARIERA
             </span>
-            <span className="mt-1 text-[0.5rem] uppercase tracking-[0.42em] text-muted">
+            <span className="mt-1 hidden truncate text-[0.5rem] uppercase tracking-[0.32em] text-muted sm:block sm:tracking-[0.42em]">
               Every Jewel Tells a Story
             </span>
           </span>
         </Link>
 
-        {/* Primary nav — animated gold underline */}
-        <nav className="hidden items-center gap-8 md:flex">
+        {/* Primary nav — animated gold underline, centered */}
+        <nav className="hidden items-center gap-8 lg:flex lg:justify-self-center">
           {NAV.map((item) => {
             const active = isActive(item.href);
             return (
@@ -50,7 +55,7 @@ export function SiteHeader() {
                   className={
                     active
                       ? "text-gold-deep"
-                      : "text-ink/70 transition-colors group-hover:text-maroon"
+                      : "text-ink/70 transition-colors group-hover:text-maroon dark:group-hover:text-gold"
                   }
                 >
                   {item.label}
@@ -66,24 +71,15 @@ export function SiteHeader() {
         </nav>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 text-maroon">
-          <Link
-            href="/search"
-            aria-label="Search"
-            className="hidden h-9 w-9 items-center justify-center rounded-full transition hover:bg-maroon/8 hover:text-gold-deep sm:flex"
-          >
+        <div className="flex shrink-0 items-center gap-1.5 text-maroon sm:gap-2 lg:justify-self-end">
+          <Link href="/search" aria-label="Search" className={`${iconBtn} hidden sm:flex`}>
             <SearchIcon />
           </Link>
-          <Link
-            href="/account"
-            aria-label="My account"
-            className="hidden h-9 w-9 items-center justify-center rounded-full transition hover:bg-maroon/8 hover:text-gold-deep sm:flex"
-          >
+          <Link href="/account" aria-label="My account" className={`${iconBtn} hidden sm:flex`}>
             <UserIcon />
           </Link>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-maroon/8">
-            <HeaderCart />
-          </div>
+          <ThemeToggle className={iconBtn} />
+          <HeaderCart className={iconBtn} />
           <MobileMenu />
         </div>
       </div>

@@ -5,7 +5,7 @@ import { SiteFooter } from "./site-footer";
 
 // Hides the store footer on the auth screens (login / register) so they read
 // as clean full-screen pages.
-const HIDDEN_ON = ["/login", "/register"];
+const HIDDEN_ON = ["/login", "/register", "/forgot-password", "/reset-password"];
 
 export function ConditionalFooter() {
   const pathname = usePathname();

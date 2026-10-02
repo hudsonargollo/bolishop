@@ -29,7 +29,7 @@ export function HeroSlider() {
 
   return (
     <section
-      className="relative overflow-hidden bg-maroon text-cream"
+      className="relative overflow-hidden bg-maroon text-light"
       onMouseEnter={() => (paused.current = true)}
       onMouseLeave={() => (paused.current = false)}
     >
@@ -62,10 +62,10 @@ export function HeroSlider() {
         <h1 className="mt-5 gold-text font-serif text-5xl font-bold tracking-[0.2em] sm:text-7xl">
           ZARIERA
         </h1>
-        <p className="mt-4 font-serif text-2xl italic text-cream/90 sm:text-3xl">
+        <p className="mt-4 font-serif text-2xl italic text-light/90 sm:text-3xl">
           Every Jewel Tells a Story
         </p>
-        <p className="mt-2 text-sm uppercase tracking-[0.2em] text-cream/70">
+        <p className="mt-2 text-sm uppercase tracking-[0.2em] text-light/70">
           Premium Stainless Steel Jewelry
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
@@ -77,7 +77,7 @@ export function HeroSlider() {
           </Link>
           <Link
             href="/about"
-            className="inline-block rounded-full border border-[rgba(230,205,139,0.5)] px-9 py-3.5 text-sm font-light uppercase tracking-[0.12em] text-cream transition hover:border-gold hover:text-gold"
+            className="inline-block rounded-full border border-[rgba(230,205,139,0.5)] px-9 py-3.5 text-sm font-light uppercase tracking-[0.12em] text-light transition hover:border-gold hover:text-gold"
           >
             Our Story
           </Link>

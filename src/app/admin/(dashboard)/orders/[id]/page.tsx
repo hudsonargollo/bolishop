@@ -2,9 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAdminOrder } from "@/lib/admin-data";
 import { formatPrice } from "@/lib/format";
-import { StatusBadge } from "@/components/admin/status-badge";
+import { StatusBadge } from "@/components/status-badge";
+import { ShipmentPanel } from "@/components/admin/shipment-panel";
+import { StatusUpdateForm } from "@/components/admin/status-update-form";
 import { updateOrderStatus, updatePaymentStatus } from "../actions";
-import { ORDER_STATUSES, PAYMENT_STATUSES } from "@/lib/order-status";
+import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS } from "@/lib/order-status";
+import { courierLabel, trackingUrl } from "@/lib/couriers";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +35,7 @@ export default async function AdminOrderDetailPage({
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Items + totals */}
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-xl border border-[var(--line)] bg-cream-soft">
+          <div className="overflow-hidden rounded-xl border border-[var(--line)] bg-surface">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--line)] text-left text-xs uppercase tracking-wider text-muted">
@@ -66,7 +69,7 @@ export default async function AdminOrderDetailPage({
           </div>
 
           {/* Customer */}
-          <div className="rounded-xl border border-[var(--line)] bg-cream-soft p-5 text-sm">
+          <div className="rounded-xl border border-[var(--line)] bg-surface p-5 text-sm">
             <h2 className="mb-3 font-serif text-lg font-semibold text-ink">Customer</h2>
             <dl className="space-y-1.5">
               <Info label="Name" value={order.customerName} />
@@ -80,44 +83,41 @@ export default async function AdminOrderDetailPage({
 
         {/* Status controls */}
         <aside className="space-y-5">
-          <div className="rounded-xl border border-[var(--line)] bg-cream-soft p-5">
+          <ShipmentPanel
+            id={order.id}
+            booked={!!order.trackingNumber}
+            courierName={order.courier ? courierLabel(order.courier) : undefined}
+            trackingNumber={order.trackingNumber}
+            trackUrl={order.courier && order.trackingNumber ? trackingUrl(order.courier, order.trackingNumber) : undefined}
+          />
+
+          <div className="rounded-xl border border-[var(--line)] bg-surface p-5">
             <h2 className="mb-3 font-serif text-lg font-semibold text-ink">Order status</h2>
-            <form action={updateOrderStatus.bind(null, order.id)} className="flex gap-2">
-              <select name="status" defaultValue={order.status} className={select}>
-                {ORDER_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s.charAt(0) + s.slice(1).toLowerCase()}
-                  </option>
-                ))}
-              </select>
-              <button className={saveBtn}>Save</button>
-            </form>
+            <StatusUpdateForm
+              action={updateOrderStatus.bind(null, order.id)}
+              name="status"
+              defaultValue={order.status}
+              options={[order.status, ...ORDER_TRANSITIONS[order.status]]}
+              successMessage="Order status updated"
+            />
           </div>
 
-          <div className="rounded-xl border border-[var(--line)] bg-cream-soft p-5">
+          <div className="rounded-xl border border-[var(--line)] bg-surface p-5">
             <h2 className="mb-1 font-serif text-lg font-semibold text-ink">Payment</h2>
             <p className="mb-3 text-sm text-muted">Method: {order.paymentMethod}</p>
-            <form action={updatePaymentStatus.bind(null, order.id)} className="flex gap-2">
-              <select name="paymentStatus" defaultValue={order.paymentStatus} className={select}>
-                {PAYMENT_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s.charAt(0) + s.slice(1).toLowerCase()}
-                  </option>
-                ))}
-              </select>
-              <button className={saveBtn}>Save</button>
-            </form>
+            <StatusUpdateForm
+              action={updatePaymentStatus.bind(null, order.id)}
+              name="paymentStatus"
+              defaultValue={order.paymentStatus}
+              options={[order.paymentStatus, ...PAYMENT_TRANSITIONS[order.paymentStatus]]}
+              successMessage="Payment status updated"
+            />
           </div>
         </aside>
       </div>
     </div>
   );
 }
-
-const select =
-  "w-full rounded-md border border-[var(--line-strong)] bg-cream px-3 py-2 text-sm outline-none focus:border-gold";
-const saveBtn =
-  "rounded-md bg-maroon px-4 py-2 text-sm font-medium text-cream transition hover:bg-maroon-2";
 
 function Line({ label, value }: { label: string; value: string }) {
   return (

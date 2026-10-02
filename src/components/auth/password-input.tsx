@@ -7,11 +7,13 @@ export function PasswordInput({
   name,
   autoComplete,
   required = false,
+  minLength,
   className = "",
 }: {
   name: string;
   autoComplete?: string;
   required?: boolean;
+  minLength?: number;
   className?: string;
 }) {
   const [show, setShow] = useState(false);
@@ -22,6 +24,7 @@ export function PasswordInput({
         name={name}
         type={show ? "text" : "password"}
         required={required}
+        minLength={minLength}
         autoComplete={autoComplete}
         className={`${className} pr-11`}
       />

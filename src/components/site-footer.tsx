@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { Emblem } from "./brand/emblem";
+import { CONTACT } from "@/lib/contact";
+import { EmailLink } from "./email-link";
+
+// Contact details & socials come from lib/contact (env-driven). Anything not
+// configured is hidden rather than showing a placeholder.
 
 const NAV = [
   { label: "Home", href: "/" },
@@ -26,7 +31,7 @@ const TRUST = [
 export function SiteFooter() {
   return (
     <footer
-      className="relative mt-24 overflow-hidden text-cream/80"
+      className="relative mt-24 overflow-hidden text-light/80"
       style={{ background: "linear-gradient(180deg, #3d1019 0%, #2a0b12 100%)" }}
     >
       {/* gold top accent + soft glow */}
@@ -43,23 +48,40 @@ export function SiteFooter() {
             <Emblem size={34} className="text-gold" />
             <span className="gold-text font-serif text-2xl font-bold tracking-[0.24em]">ZARIERA</span>
           </div>
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/60">
-            Premium stainless steel &amp; artificial jewelry — gold-plated, rust-free and made to
-            last. Every jewel tells a story.
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-light/60">
+            Premium stainless steel &amp; artificial jewelry — rust-free and made to last.
+            Every jewel tells a story.
           </p>
           <div className="mt-6 flex gap-3">
-            <Social href="https://instagram.com" label="Instagram">
-              <InstagramIcon />
-            </Social>
-            <Social href="https://facebook.com" label="Facebook">
-              <FacebookIcon />
-            </Social>
-            <Social href="https://wa.me/923000000000" label="WhatsApp">
-              <WhatsAppIcon />
-            </Social>
-            <Social href="mailto:hello@zariera.com" label="Email">
-              <MailIcon />
-            </Social>
+            {CONTACT.instagram && (
+              <Social href={CONTACT.instagram} label="Instagram">
+                <InstagramIcon />
+              </Social>
+            )}
+            {CONTACT.facebook && (
+              <Social href={CONTACT.facebook} label="Facebook">
+                <FacebookIcon />
+              </Social>
+            )}
+            {CONTACT.tiktok && (
+              <Social href={CONTACT.tiktok} label="TikTok">
+                <TikTokIcon />
+              </Social>
+            )}
+            {CONTACT.whatsappUrl && (
+              <Social href={CONTACT.whatsappUrl} label="WhatsApp">
+                <WhatsAppIcon />
+              </Social>
+            )}
+            {CONTACT.email && (
+              <EmailLink
+                email={CONTACT.email}
+                ariaLabel="Email"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(230,205,139,0.35)] text-light/80 transition hover:border-gold hover:bg-gold hover:text-maroon"
+              >
+                <MailIcon />
+              </EmailLink>
+            )}
           </div>
         </div>
 
@@ -72,22 +94,31 @@ export function SiteFooter() {
         {/* Contact */}
         <div className="flex flex-col items-center text-center md:col-span-3 md:items-start md:text-left">
           <h3 className="eyebrow mb-4 text-gold">Get in touch</h3>
-          <ul className="space-y-3 text-sm text-cream/70">
+          <ul className="space-y-3 text-sm text-light/70">
             <li className="flex items-center justify-center gap-2.5 md:justify-start">
-              <PinIcon /> Lahore, Pakistan
+              <PinIcon /> {CONTACT.city}
+            </li>
+            {CONTACT.email && (
+              <li>
+                <EmailLink email={CONTACT.email} className="flex items-center justify-center gap-2.5 transition-colors hover:text-gold md:justify-start">
+                  <MailIcon /> {CONTACT.email}
+                </EmailLink>
+              </li>
+            )}
+            {CONTACT.phone && (
+              <li>
+                <a href={CONTACT.phoneHref} className="flex items-center justify-center gap-2.5 transition-colors hover:text-gold md:justify-start">
+                  <PhoneIcon /> {CONTACT.phone}
+                </a>
+              </li>
+            )}
+            <li className="flex items-center justify-center gap-2.5 md:justify-start">
+              <ClockIcon /> {CONTACT.hours}
             </li>
             <li>
-              <a href="mailto:hello@zariera.com" className="flex items-center justify-center gap-2.5 transition-colors hover:text-gold md:justify-start">
-                <MailIcon /> hello@zariera.com
-              </a>
-            </li>
-            <li>
-              <a href="tel:+923000000000" className="flex items-center justify-center gap-2.5 transition-colors hover:text-gold md:justify-start">
-                <PhoneIcon /> +92 300 0000000
-              </a>
-            </li>
-            <li className="flex items-center justify-center gap-2.5 md:justify-start">
-              <ClockIcon /> Mon–Sat, 11am – 8pm
+              <Link href="/contact" className="flex items-center justify-center gap-2.5 transition-colors hover:text-gold md:justify-start">
+                <MailIcon /> Send us a message
+              </Link>
             </li>
           </ul>
         </div>
@@ -95,7 +126,7 @@ export function SiteFooter() {
 
       {/* Trust strip */}
       <div className="relative border-t border-[rgba(230,205,139,0.15)]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2 px-6 py-4 text-[0.68rem] uppercase tracking-[0.18em] text-cream/55">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2 px-6 py-4 text-[0.68rem] uppercase tracking-[0.18em] text-light/55">
           {TRUST.map((t) => (
             <span key={t} className="flex items-center gap-1.5">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="2.4">
@@ -109,7 +140,7 @@ export function SiteFooter() {
 
       {/* Bottom bar */}
       <div className="relative border-t border-[rgba(230,205,139,0.15)]">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-5 text-center text-xs text-cream/45 sm:flex-row sm:text-left">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-5 text-center text-xs text-light/45 sm:flex-row sm:text-left">
           <span>© {new Date().getFullYear()} ZARIERA. All rights reserved.</span>
           <span>Crafted with care · Premium Stainless Steel Jewelry</span>
         </div>
@@ -134,7 +165,7 @@ function FooterCol({
         <Link
           key={l.href}
           href={l.href}
-          className="group inline-flex items-center gap-2 text-sm text-cream/70 transition-colors hover:text-gold"
+          className="group inline-flex items-center gap-2 text-sm text-light/70 transition-colors hover:text-gold"
         >
           <span className="h-px w-0 bg-gold transition-all duration-300 group-hover:w-4" />
           {l.label}
@@ -156,10 +187,10 @@ function Social({
   return (
     <a
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      // Web profiles open in a new tab; mailto:/tel: open the mail/phone app directly.
+      {...(href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(230,205,139,0.35)] text-cream/80 transition hover:border-gold hover:bg-gold hover:text-maroon"
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(230,205,139,0.35)] text-light/80 transition hover:border-gold hover:bg-gold hover:text-maroon"
     >
       {children}
     </a>
@@ -218,6 +249,14 @@ function ClockIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TikTokIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.6 3c.4 2.2 1.8 3.7 4 3.9v3.1c-1.5 0-2.9-.4-4-1.2v6.1c0 3.4-2.6 6.1-6 6.1s-6-2.7-6-6.1 2.6-6.1 6-6.1c.3 0 .6 0 .9.1v3.2c-.3-.1-.6-.1-.9-.1-1.6 0-2.9 1.3-2.9 2.9s1.3 2.9 2.9 2.9 3-1.3 3-2.9V3h3z" />
     </svg>
   );
 }

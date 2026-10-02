@@ -7,7 +7,12 @@
 //
 // NOTE: Endpoint URLs and field names follow each gateway's public docs and may
 // need small adjustments to match the client's specific account / API version.
-// Always verify callbacks server-side (signature/status) before marking PAID.
+// Callbacks are verified server-side before an order is marked PAID:
+//   PayFast  → validation_hash = sha256(basket_id|SECURED_KEY|MERCHANT_ID|err_code)
+//   Safepay  → X-SFPY-SIGNATURE = HMAC-SHA512(webhook body, SAFEPAY_WEBHOOK_SECRET)
+// Confirm both formulas against the client's merchant documentation at go-live.
+
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export type PaymentMethod = "COD" | "PAYFAST" | "SAFEPAY";
 
@@ -15,13 +20,14 @@ export type PaymentInitInput = {
   orderNumber: string;
   amount: number; // PKR
   customer: { name: string; email: string; phone: string };
-  returnUrl: string; // where the gateway sends the buyer back
-  cancelUrl: string;
+  returnUrl: string; // where the gateway sends the buyer back on success
+  cancelUrl: string; // ... and on failure / cancel
+  notifyUrl: string; // server-to-server notification (IPN / webhook)
 };
 
 export type PaymentInitResult =
   | { configured: false }
-  | { configured: true; ok: true; redirectUrl: string }
+  | { configured: true; ok: true; redirectUrl: string; reference?: string }
   | { configured: true; ok: false; error: string };
 
 // ---------- Config ----------
@@ -31,7 +37,8 @@ export function payfastConfigured(): boolean {
 }
 
 export function safepayConfigured(): boolean {
-  return Boolean(process.env.SAFEPAY_API_KEY);
+  // The webhook secret is required too — without it payments can't be verified.
+  return Boolean(process.env.SAFEPAY_API_KEY && process.env.SAFEPAY_WEBHOOK_SECRET);
 }
 
 export function isOnlineConfigured(method: PaymentMethod): boolean {
@@ -63,6 +70,7 @@ async function initiatePayfast(input: PaymentInitInput): Promise<PaymentInitResu
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: tokenBody,
+      signal: AbortSignal.timeout(15000),
     });
     const tokenJson = (await tokenRes.json()) as { ACCESS_TOKEN?: string };
     const token = tokenJson.ACCESS_TOKEN;
@@ -77,11 +85,12 @@ async function initiatePayfast(input: PaymentInitInput): Promise<PaymentInitResu
       TXNAMT: input.amount.toFixed(2),
       CUSTOMER_MOBILE_NO: input.customer.phone,
       CUSTOMER_EMAIL_ADDRESS: input.customer.email,
-      SIGNATURE: input.orderNumber,
+      SIGNATURE: randomBytes(12).toString("hex"),
       VERSION: "ZARIERA-1.0",
       TXNDESC: `ZARIERA order ${input.orderNumber}`,
       SUCCESS_URL: input.returnUrl,
       FAILURE_URL: input.cancelUrl,
+      CHECKOUT_URL: input.notifyUrl,
       BASKET_ID: input.orderNumber,
       ORDER_DATE: new Date().toISOString(),
       CURRENCY_CODE: "PKR",
@@ -122,6 +131,7 @@ async function initiateSafepay(input: PaymentInitInput): Promise<PaymentInitResu
         currency: "PKR",
         environment,
       }),
+      signal: AbortSignal.timeout(15000),
     });
     const initJson = (await initRes.json()) as { data?: { token?: string } };
     const token = initJson.data?.token;
@@ -140,6 +150,7 @@ async function initiateSafepay(input: PaymentInitInput): Promise<PaymentInitResu
       configured: true,
       ok: true,
       redirectUrl: `${apiBase}/checkout/pay?${params.toString()}`,
+      reference: token, // tracker — the webhook identifies the payment by it
     };
   } catch (err) {
     return {
@@ -159,4 +170,32 @@ export async function initiatePayment(
   if (method === "PAYFAST") return initiatePayfast(input);
   if (method === "SAFEPAY") return initiateSafepay(input);
   return { configured: false }; // COD needs no gateway
+}
+
+// ---------- Callback verification ----------
+
+function safeEqual(a: string, b: string): boolean {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+export function verifyPayfastHash(basketId: string, errCode: string, hash: string): boolean {
+  const merchant = process.env.PAYFAST_MERCHANT_ID;
+  const key = process.env.PAYFAST_SECURED_KEY;
+  if (!merchant || !key || !hash) return false;
+  const expected = createHash("sha256")
+    .update(`${basketId}|${key}|${merchant}|${errCode}`)
+    .digest("hex");
+  return safeEqual(expected.toLowerCase(), hash.trim().toLowerCase());
+}
+
+export function verifySafepaySignature(rawBody: string, dataJson: string, signature: string): boolean {
+  const secret = process.env.SAFEPAY_WEBHOOK_SECRET;
+  if (!secret || !signature) return false;
+  const sig = signature.trim().toLowerCase();
+  // Safepay signs the event's `data` object; accept the raw body form as well.
+  return [dataJson, rawBody].some((body) =>
+    safeEqual(createHmac("sha512", secret).update(body).digest("hex"), sig)
+  );
 }

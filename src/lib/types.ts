@@ -17,6 +17,7 @@ export type ProductView = {
   price: number;
   compareAtPrice: number | null;
   material: string | null;
+  specs?: string | null;
   stock: number;
   images: string[];
   featured: boolean;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Emblem } from "@/components/brand/emblem";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/care" },
   title: "Care Guide",
   description: "How to care for your ZARIERA stainless steel jewelry so it stays brilliant for years.",
 };

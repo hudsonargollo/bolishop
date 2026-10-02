@@ -23,9 +23,28 @@ export async function verifyCredentials(
   return { ok: false };
 }
 
-// Guards admin pages — redirects to login when not authenticated.
-export async function requireAdmin(): Promise<AdminSession> {
+// Signed admin cookie + the admin account must still exist in the DB (so
+// deleting/demoting an admin revokes their sessions). If the DB itself is
+// unreachable the signed session is accepted — no data can be read or written
+// then anyway, and the dashboard shows its "database disconnected" banner.
+export async function getVerifiedAdmin(): Promise<AdminSession | null> {
   const session = await getAdminSession();
+  if (!session) return null;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: session.email },
+      select: { role: true },
+    });
+    if (!user) return null;
+    return { ...session, role: user.role };
+  } catch {
+    return session;
+  }
+}
+
+// Guards admin pages / actions — redirects to login when not authenticated.
+export async function requireAdmin(): Promise<AdminSession> {
+  const session = await getVerifiedAdmin();
   if (!session) redirect("/admin/login");
   return session;
 }

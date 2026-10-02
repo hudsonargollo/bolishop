@@ -47,7 +47,7 @@ export function ShopFilters({ materials, showSort = true }: Props) {
           <select
             value={currentSort}
             onChange={(e) => setParam({ sort: e.target.value })}
-            className="w-full rounded-md border border-[var(--line-strong)] bg-white/70 px-3 py-2.5 text-sm text-ink outline-none focus:border-gold"
+            className="w-full rounded-md border border-[var(--line-strong)] bg-surface/70 px-3 py-2.5 text-sm text-ink outline-none focus:border-gold"
           >
             {SORTS.map((s) => (
               <option key={s.value} value={s.value}>
@@ -89,14 +89,17 @@ export function ShopFilters({ materials, showSort = true }: Props) {
       <div>
         <h3 className="eyebrow mb-3">Price (Rs)</h3>
         <form
+          // Re-mount when the URL range changes (e.g. "Clear filters") so the
+          // inputs always show the active values.
+          key={`${currentMin}|${currentMax}`}
           className="flex items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             const data = new FormData(e.currentTarget);
-            setParam({
-              minPrice: (data.get("minPrice") as string) || null,
-              maxPrice: (data.get("maxPrice") as string) || null,
-            });
+            let min = (data.get("minPrice") as string) || "";
+            let max = (data.get("maxPrice") as string) || "";
+            if (min && max && Number(min) > Number(max)) [min, max] = [max, min];
+            setParam({ minPrice: min || null, maxPrice: max || null });
           }}
         >
           <input
@@ -105,7 +108,7 @@ export function ShopFilters({ materials, showSort = true }: Props) {
             min="0"
             placeholder="Min"
             defaultValue={currentMin}
-            className="w-full rounded-md border border-[var(--line-strong)] bg-white/70 px-2.5 py-2 text-sm outline-none focus:border-gold"
+            className="w-full rounded-md border border-[var(--line-strong)] bg-surface/70 px-2.5 py-2 text-sm outline-none focus:border-gold"
           />
           <span className="text-muted">–</span>
           <input
@@ -114,7 +117,7 @@ export function ShopFilters({ materials, showSort = true }: Props) {
             min="0"
             placeholder="Max"
             defaultValue={currentMax}
-            className="w-full rounded-md border border-[var(--line-strong)] bg-white/70 px-2.5 py-2 text-sm outline-none focus:border-gold"
+            className="w-full rounded-md border border-[var(--line-strong)] bg-surface/70 px-2.5 py-2 text-sm outline-none focus:border-gold"
           />
           <button
             type="submit"

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NotifyForm } from "@/components/notify-form";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCategoryBySlug, getProducts, getMaterials } from "@/lib/catalog";
@@ -15,6 +16,7 @@ export async function generateMetadata({
   return {
     title: cat.name,
     description: cat.description ?? `Shop ZARIERA ${cat.name.toLowerCase()}.`,
+    alternates: { canonical: `/shop/${cat.slug}` },
   };
 }
 
@@ -50,16 +52,14 @@ export default async function CategoryPage({
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/shop"
-            className="rounded-full bg-maroon px-8 py-3 text-sm font-medium uppercase tracking-[0.12em] text-cream transition hover:bg-maroon-2"
+            className="rounded-full bg-maroon px-8 py-3 text-sm font-medium uppercase tracking-[0.12em] text-light transition hover:bg-maroon-2"
           >
             Shop available pieces
           </Link>
-          <Link
-            href="/contact"
-            className="rounded-full border border-[var(--line-strong)] px-8 py-3 text-sm text-ink transition hover:border-gold hover:text-gold-deep"
-          >
-            Notify me
-          </Link>
+        </div>
+        <div className="mt-8">
+          <p className="mb-3 text-sm text-muted">Get an email when they launch:</p>
+          <NotifyForm slug={cat.slug} label={cat.name} />
         </div>
       </div>
     );

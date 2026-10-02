@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getProducts, getCategories } from "@/lib/catalog";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+import { siteUrl } from "@/lib/site";
 
 export const revalidate = 3600;
 
@@ -14,27 +14,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/about",
     "/custom",
     "/contact",
-    "/search",
     "/shipping",
     "/care",
     "/faq",
   ].map((path) => ({
     url: `${siteUrl}${path}`,
-    lastModified: new Date(),
     changeFrequency: "weekly",
     priority: path === "" ? 1 : 0.7,
   }));
 
   const categoryPages: MetadataRoute.Sitemap = categories.map((c) => ({
     url: `${siteUrl}/shop/${c.slug}`,
-    lastModified: new Date(),
     changeFrequency: "weekly",
     priority: 0.6,
   }));
 
   const productPages: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${siteUrl}/product/${p.slug}`,
-    lastModified: new Date(),
     changeFrequency: "weekly",
     priority: 0.8,
   }));

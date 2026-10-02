@@ -9,7 +9,7 @@ export function ProductCard({ product }: { product: ProductView }) {
   const soldOut = product.stock <= 0;
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-lg border border-[var(--line)] bg-white/70 transition hover:border-gold hover:shadow-[0_18px_40px_-24px_rgba(38,8,16,0.5)]">
+    <div className="group flex h-full flex-col overflow-hidden rounded-lg border border-[var(--line)] bg-surface/70 transition hover:border-gold hover:shadow-[0_18px_40px_-24px_rgba(38,8,16,0.5)]">
       <Link href={`/product/${product.slug}`} className="relative block aspect-square overflow-hidden bg-sand">
         <div className="h-full w-full transition duration-500 group-hover:scale-105">
           <ProductImage src={product.images[0]} alt={product.name} seed={product.slug} />

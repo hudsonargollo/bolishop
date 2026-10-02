@@ -1,7 +1,9 @@
+import { FREE_SHIPPING_TEXT } from "@/lib/shipping";
+
 // Continuous scrolling announcement strip (pure CSS, pauses on hover).
 
 const ITEMS = [
-  "Free shipping on orders over Rs 50,000",
+  FREE_SHIPPING_TEXT,
   "Cash on Delivery available nationwide",
   "Premium stainless steel — rust-free & hypoallergenic",
   "Complimentary care guidance with every order",
@@ -14,7 +16,7 @@ export function Marquee() {
 
   return (
     <div
-      className="marquee-pause relative overflow-hidden border-y border-[rgba(230,205,139,0.28)] py-2.5 text-cream"
+      className="marquee-pause relative overflow-hidden border-y border-[rgba(230,205,139,0.28)] py-2.5 text-light"
       style={{ background: "linear-gradient(90deg, #3d1019 0%, #5b1a2b 50%, #3d1019 100%)" }}
     >
       {/* soft gold glow edges */}
@@ -30,7 +32,7 @@ export function Marquee() {
       <div className="flex w-max animate-marquee items-center whitespace-nowrap">
         {strip.map((t, i) => (
           <span key={i} className="flex items-center">
-            <span className="px-7 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-cream/90">
+            <span className="px-7 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-light/90">
               {t}
             </span>
             {/* gold diamond separator */}

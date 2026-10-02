@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCart } from "@/components/cart/cart-provider";
+import { useCart, type CartItem } from "@/components/cart/cart-provider";
 import { ProductImage } from "@/components/product-image";
+import { useToast } from "@/components/ui/toast";
 import { formatPrice } from "@/lib/format";
 import { shippingFor, FREE_SHIPPING_THRESHOLD } from "@/lib/shipping";
+
+// Mirrors MIN_PASSWORD in lib/password.ts (that module uses node:crypto, so it
+// can't be imported into this client component).
+const MIN_PASSWORD = 8;
 
 type PaymentMethod = "COD" | "PAYFAST" | "SAFEPAY";
 
@@ -17,15 +22,35 @@ export type CheckoutDefaults = {
 };
 
 const inputCls =
-  "w-full rounded-lg border border-[var(--line-strong)] bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.22)]";
+  "w-full rounded-lg border border-[var(--line-strong)] bg-surface px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.22)]";
 const labelCls = "mb-1.5 block text-xs font-medium uppercase tracking-[0.1em] text-muted";
 
-export function CheckoutForm({ defaults }: { defaults?: CheckoutDefaults }) {
+const NOTICES = {
+  cancelled: "Payment was cancelled. You can try again below.",
+  failed: "Payment failed. Please try again or choose Cash on Delivery.",
+} as const;
+
+export function CheckoutForm({
+  defaults,
+  paymentNotice = null,
+  gateways = { PAYFAST: false, SAFEPAY: false },
+  buyNow = null,
+}: {
+  buyNow?: CartItem | null;
+  defaults?: CheckoutDefaults;
+  paymentNotice?: keyof typeof NOTICES | null;
+  gateways?: { PAYFAST: boolean; SAFEPAY: boolean };
+}) {
   const router = useRouter();
-  const { items, subtotal, ready } = useCart();
+  const cart = useCart();
+  // Single-item "Buy it now" checkout, otherwise the whole cart.
+  const items = buyNow ? [buyNow] : cart.items;
+  const subtotal = buyNow ? buyNow.price * buyNow.quantity : cart.subtotal;
+  const ready = buyNow ? true : cart.ready;
+  const toast = useToast();
   const [payment, setPayment] = useState<PaymentMethod>("COD");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(paymentNotice ? NOTICES[paymentNotice] : null);
 
   // Guests (not signed in) can create an account while placing their order.
   const isGuest = !defaults?.email;
@@ -34,13 +59,23 @@ export function CheckoutForm({ defaults }: { defaults?: CheckoutDefaults }) {
   const shipping = shippingFor(subtotal);
   const total = subtotal + shipping;
 
+  const paymentNoticeShown = useRef(false);
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search).get("payment");
-    if (p === "cancelled") setError("Payment was cancelled. You can try again below.");
-    else if (p === "failed") setError("Payment failed. Please try again or choose Cash on Delivery.");
-  }, []);
+    if (!paymentNotice || paymentNoticeShown.current) return; // guard StrictMode double-invoke
+    paymentNoticeShown.current = true;
+    toast.error(NOTICES[paymentNotice]);
+  }, [paymentNotice, toast]);
 
-  if (ready && items.length === 0) {
+  if (!ready) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-12" aria-busy="true">
+        <h1 className="font-serif text-4xl font-semibold text-ink">Checkout</h1>
+        <div className="mt-8 h-96 animate-pulse rounded-2xl bg-cream-soft" />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-5 py-24 text-center">
         <h1 className="font-serif text-3xl font-semibold text-ink">Your cart is empty</h1>
@@ -93,13 +128,18 @@ export function CheckoutForm({ defaults }: { defaults?: CheckoutDefaults }) {
         window.location.href = data.redirectUrl;
         return;
       }
+      if (isGuest && createAccount && !data.accountCreated) {
+        toast.error("Your order is placed, but we couldn't create an account — that email may already be registered. Sign in to see it.");
+      }
       router.push(
-        `/checkout/success?order=${encodeURIComponent(data.orderNumber)}&total=${data.total}${
+        `/checkout/success?order=${encodeURIComponent(data.orderNumber)}${
           data.accountCreated ? "&account=1" : ""
         }`
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      setError(message);
+      toast.error(message, { title: "Order not placed" });
       setSubmitting(false);
     }
   }
@@ -158,24 +198,30 @@ export function CheckoutForm({ defaults }: { defaults?: CheckoutDefaults }) {
                 onSelect={setPayment}
                 title="Cash on Delivery (COD)"
                 desc="Shop now & pay in cash at your doorstep."
+                last={!gateways.PAYFAST && !gateways.SAFEPAY}
               />
-              <PaymentOption
-                value="PAYFAST"
-                current={payment}
-                onSelect={setPayment}
-                title="Credit / Debit Card"
-                desc="Pay securely online via PayFast."
-                icons={<CardBrands />}
-              />
-              <PaymentOption
-                value="SAFEPAY"
-                current={payment}
-                onSelect={setPayment}
-                title="Card / Wallet (Safepay)"
-                desc="Pay securely online via Safepay."
-                icons={<CardBrands />}
-                last
-              />
+              {gateways.PAYFAST && (
+                <PaymentOption
+                  value="PAYFAST"
+                  current={payment}
+                  onSelect={setPayment}
+                  title="Credit / Debit Card"
+                  desc="Pay securely online via PayFast."
+                  icons={<CardBrands />}
+                  last={!gateways.SAFEPAY}
+                />
+              )}
+              {gateways.SAFEPAY && (
+                <PaymentOption
+                  value="SAFEPAY"
+                  current={payment}
+                  onSelect={setPayment}
+                  title="Card / Wallet (Safepay)"
+                  desc="Pay securely online via Safepay."
+                  icons={<CardBrands />}
+                  last
+                />
+              )}
             </div>
           </Section>
 
@@ -203,9 +249,9 @@ export function CheckoutForm({ defaults }: { defaults?: CheckoutDefaults }) {
                     name="password"
                     type="password"
                     required
-                    minLength={6}
+                    minLength={MIN_PASSWORD}
                     autoComplete="new-password"
-                    placeholder="At least 6 characters"
+                    placeholder={`At least ${MIN_PASSWORD} characters`}
                     className={`${inputCls} max-w-sm`}
                   />
                   <p className="mt-2 text-xs text-muted">
@@ -223,7 +269,7 @@ export function CheckoutForm({ defaults }: { defaults?: CheckoutDefaults }) {
 
         {/* Order summary — sticky/locked on desktop */}
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl border border-[var(--line-strong)] bg-white/80 p-6 shadow-[0_24px_60px_-40px_rgba(38,8,16,0.5)]">
+          <div className="rounded-2xl border border-[var(--line-strong)] bg-surface/80 p-6 shadow-[0_24px_60px_-40px_rgba(38,8,16,0.5)]">
             <h2 className="font-serif text-xl font-semibold text-ink">Order Summary</h2>
 
             <ul className="mt-5 max-h-72 space-y-4 overflow-y-auto border-b border-[var(--line)] pb-5 pr-1 text-sm">
@@ -233,7 +279,7 @@ export function CheckoutForm({ defaults }: { defaults?: CheckoutDefaults }) {
                     <div className="h-14 w-14 overflow-hidden rounded-lg border border-[var(--line)] bg-sand">
                       <ProductImage src={i.image} alt={i.name} seed={i.slug} />
                     </div>
-                    <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-maroon px-1 text-[0.62rem] font-semibold text-cream">
+                    <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-maroon px-1 text-[0.62rem] font-semibold text-light">
                       {i.quantity}
                     </span>
                   </div>
@@ -300,7 +346,7 @@ function Section({
   return (
     <section>
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon text-xs font-semibold text-cream">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon text-xs font-semibold text-light">
           {step}
         </span>
         <div>

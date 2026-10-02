@@ -102,7 +102,12 @@ function adminHtml(o: OrderEmailData): string {
 }
 
 function escape(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // Sends confirmation to the customer + notification to the store owner.
@@ -134,5 +139,61 @@ export async function sendOrderEmails(o: OrderEmailData): Promise<void> {
     ]);
   } catch (err) {
     console.error("[email] Failed to send order emails:", err);
+  }
+}
+
+// Password-reset link for a storefront customer. Never throws.
+export async function sendPasswordResetEmail(p: { to: string; name: string; url: string }): Promise<void> {
+  if (!emailConfigured()) {
+    console.warn("[email] SMTP not configured — password reset email not sent.");
+    return;
+  }
+  const from = process.env.MAIL_FROM || `ZARIERA <${process.env.SMTP_USER}>`;
+  try {
+    await getTransport().sendMail({
+      from,
+      to: p.to,
+      subject: "Reset your ZARIERA password",
+      html: shell(
+        "Reset your password",
+        `<p style="color:#3a231e;font-size:14px">Hi ${escape(p.name)}, we received a request to reset your password.</p>
+         <p style="margin:22px 0"><a href="${escape(p.url)}" style="background:#5b1a2b;color:#f4e8d5;padding:12px 22px;border-radius:999px;text-decoration:none;font-size:14px">Choose a new password</a></p>
+         <p style="color:#8a6f63;font-size:13px">This link expires in 1 hour and can be used once. If you didn&rsquo;t ask for this, you can ignore this email.</p>`
+      ),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send password reset email:", err);
+  }
+}
+
+// Alerts the store owner about a contact-form message. Never throws.
+export async function sendContactNotification(m: {
+  name: string;
+  email: string;
+  phone?: string;
+  subject?: string;
+  message: string;
+  topic?: string;
+}): Promise<void> {
+  if (!emailConfigured()) return; // message is still saved in the admin "Messages" page
+  const from = process.env.MAIL_FROM || `ZARIERA <${process.env.SMTP_USER}>`;
+  const to = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER!;
+  try {
+    await getTransport().sendMail({
+      from,
+      to,
+      replyTo: m.email,
+      subject: `New message: ${m.subject || m.topic || "Contact form"} — ${m.name}`,
+      html: shell(
+        "New contact message",
+        `<p style="color:#3a231e;font-size:14px"><strong>${escape(m.name)}</strong> · ${escape(m.email)}${
+          m.phone ? ` · ${escape(m.phone)}` : ""
+        }</p>
+         ${m.subject ? `<p style="color:#3a231e;font-size:14px"><strong>${escape(m.subject)}</strong></p>` : ""}
+         <p style="color:#3a231e;font-size:14px;white-space:pre-wrap">${escape(m.message)}</p>`
+      ),
+    });
+  } catch (err) {
+    console.error("[email] Failed to send contact notification:", err);
   }
 }

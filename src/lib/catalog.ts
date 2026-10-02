@@ -26,6 +26,7 @@ type PrismaProduct = {
   price: unknown;
   compareAtPrice: unknown;
   material: string | null;
+  specs?: string | null;
   stock: number;
   images: string[];
   featured: boolean;
@@ -41,6 +42,7 @@ function toView(p: PrismaProduct): ProductView {
     price: Number(p.price),
     compareAtPrice: p.compareAtPrice == null ? null : Number(p.compareAtPrice),
     material: p.material,
+    specs: p.specs ?? null,
     stock: p.stock,
     images: p.images ?? [],
     featured: p.featured,
@@ -124,8 +126,8 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
 
 export async function getProductBySlug(slug: string): Promise<ProductView | null> {
   try {
-    const p = await prisma.product.findUnique({
-      where: { slug },
+    const p = await prisma.product.findFirst({
+      where: { slug, active: true },
       include: { category: { select: { name: true, slug: true } } },
     });
     return p ? toView(p) : null;

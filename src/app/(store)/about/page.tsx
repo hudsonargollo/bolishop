@@ -4,6 +4,7 @@ import { OrnateFrame } from "@/components/ornate-frame";
 import { Emblem } from "@/components/brand/emblem";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/about" },
   title: "About",
   description: "The ZARIERA story — premium stainless steel & artificial jewelry, made to last.",
 };
@@ -20,8 +21,8 @@ export default function AboutPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-ink/80">
             ZARIERA creates premium stainless steel and artificial jewelry — elegant,
-            affordable and made to last. Every piece is gold-plated over surgical-grade
-            steel, so it stays rust-free, skin-friendly and never fades.
+            affordable and made to last. Every piece is crafted in premium stainless steel,
+            many with a gold-plated finish, so it stays rust-free and skin-friendly.
           </p>
           <p className="mx-auto mt-4 max-w-2xl text-ink/80">
             We believe every jewel tells a story — of confidence and everyday moments. Our
@@ -30,7 +31,7 @@ export default function AboutPage() {
           </p>
           <Link
             href="/shop"
-            className="mt-9 inline-block rounded-full bg-maroon px-9 py-3.5 text-sm font-medium uppercase tracking-[0.12em] text-cream transition hover:bg-maroon-2"
+            className="mt-9 inline-block rounded-full bg-maroon px-9 py-3.5 text-sm font-medium uppercase tracking-[0.12em] text-light transition hover:bg-maroon-2"
           >
             Explore Our Collection
           </Link>
@@ -41,7 +42,7 @@ export default function AboutPage() {
         {[
           { title: "Rust-free", body: "Premium stainless steel that never rusts." },
           { title: "Skin-friendly", body: "Hypoallergenic — gentle on sensitive skin." },
-          { title: "Won't tarnish", body: "Gold-plated finish that keeps its shine." },
+          { title: "Made to last", body: "Durable finishes that keep their shine with simple care." },
         ].map((p) => (
           <div key={p.title} className="text-center">
             <h3 className="font-serif text-xl font-semibold text-ink">{p.title}</h3>

@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect } from "react";
 import { Emblem } from "./brand/emblem";
+import { useToast } from "@/components/ui/toast";
+import { subscribe, type InboundState } from "@/app/(store)/inbound-actions";
+
+const initial: InboundState = {};
 
 export function Newsletter() {
-  const [sent, setSent] = useState(false);
+  const [state, formAction, pending] = useActionState(subscribe, initial);
+  const sent = Boolean(state.ok);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+    else if (state.ok) toast.success("You're on the list — welcome to ZARIERA ✨", { title: "Subscribed" });
+  }, [state, toast]);
 
   return (
     <section className="bg-panel px-5 py-20">
@@ -37,45 +48,43 @@ export function Newsletter() {
           <span className="mt-4 block text-xs font-medium uppercase tracking-[0.34em] text-gold">
             Newsletter
           </span>
-          <h2 className="mt-2 font-serif text-3xl font-bold text-cream sm:text-4xl">
+          <h2 className="mt-2 font-serif text-3xl font-bold text-light sm:text-4xl">
             Join the ZARIERA list
           </h2>
-          <p className="mx-auto mt-3 max-w-md text-cream/70">
+          <p className="mx-auto mt-3 max-w-md text-light/70">
             Be first to know about new arrivals, exclusive offers and special deals.
           </p>
 
           {sent ? (
-            <div className="mx-auto mt-7 flex max-w-sm items-center justify-center gap-2 rounded-full border border-[rgba(230,205,139,0.4)] bg-[rgba(255,255,255,0.05)] px-6 py-3.5 text-sm text-cream">
+            <div className="mx-auto mt-7 flex max-w-sm items-center justify-center gap-2 rounded-full border border-[rgba(230,205,139,0.4)] bg-[rgba(255,255,255,0.05)] px-6 py-3.5 text-sm text-light">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold-hi)" strokeWidth="2.4">
                 <path d="M5 12l5 5L20 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Thank you for subscribing!
             </div>
           ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setSent(true);
-              }}
-              className="mx-auto mt-7 flex max-w-md flex-col gap-3 sm:flex-row"
-            >
+            <form action={formAction} className="mx-auto mt-7 flex max-w-md flex-col gap-3 sm:flex-row">
+              <input type="hidden" name="source" value="newsletter" />
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
               <input
                 type="email"
+                name="email"
                 required
                 placeholder="Enter your email"
                 aria-label="Email address"
-                className="w-full rounded-full border border-[rgba(230,205,139,0.35)] bg-[rgba(255,255,255,0.06)] px-5 py-3.5 text-sm text-cream outline-none transition placeholder:text-cream/50 focus:border-gold focus:bg-[rgba(255,255,255,0.1)]"
+                className="w-full rounded-full border border-[rgba(230,205,139,0.35)] bg-[rgba(255,255,255,0.06)] px-5 py-3.5 text-sm text-light outline-none transition placeholder:text-light/50 focus:border-gold focus:bg-[rgba(255,255,255,0.1)]"
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-gradient-to-r from-gold-hi to-gold px-8 py-3.5 text-sm font-semibold uppercase tracking-[0.12em] text-maroon transition hover:opacity-90"
+                disabled={pending}
+                className="shrink-0 rounded-full bg-gradient-to-r from-gold-hi to-gold px-8 py-3.5 text-sm font-semibold uppercase tracking-[0.12em] text-maroon transition hover:opacity-90 disabled:opacity-60"
               >
-                Subscribe
+                {pending ? "Joining…" : "Subscribe"}
               </button>
             </form>
           )}
 
-          <p className="mt-4 text-xs text-cream/45">No spam, just sparkle — unsubscribe anytime.</p>
+          <p className="mt-4 text-xs text-light/45">No spam, just sparkle — unsubscribe anytime.</p>
         </div>
       </div>
     </section>

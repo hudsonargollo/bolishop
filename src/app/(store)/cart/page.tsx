@@ -3,12 +3,33 @@
 import Link from "next/link";
 import { useCart } from "@/components/cart/cart-provider";
 import { ProductImage } from "@/components/product-image";
+import { useToast } from "@/components/ui/toast";
 import { formatPrice } from "@/lib/format";
 
 export default function CartPage() {
   const { items, subtotal, setQuantity, remove, count, ready } = useCart();
+  const toast = useToast();
 
-  if (ready && items.length === 0) {
+  function handleRemove(id: string, name: string) {
+    remove(id);
+    toast.info(`${name} removed from your bag`);
+  }
+
+  // Cart lives in localStorage — avoid flashing an empty "Rs 0" bag before it loads.
+  if (!ready) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-14" aria-busy="true">
+        <h1 className="font-serif text-4xl font-semibold text-ink">Shopping Bag</h1>
+        <div className="mt-10 space-y-4">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-28 animate-pulse rounded-xl bg-cream-soft" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-5 py-24 text-center">
         <h1 className="font-serif text-4xl font-semibold text-ink">Your cart is empty</h1>
@@ -78,7 +99,7 @@ export default function CartPage() {
                     </button>
                   </div>
                   <button
-                    onClick={() => remove(item.id)}
+                    onClick={() => handleRemove(item.id, item.name)}
                     className="text-sm text-muted underline-offset-4 hover:text-red-700 hover:underline"
                   >
                     Remove
@@ -90,7 +111,7 @@ export default function CartPage() {
         </ul>
 
         {/* Summary — locked in place while items scroll */}
-        <aside className="rounded-xl border border-[var(--line)] bg-white/70 p-6 lg:sticky lg:top-24 lg:self-start">
+        <aside className="rounded-xl border border-[var(--line)] bg-surface/70 p-6 lg:sticky lg:top-24 lg:self-start">
           <h2 className="font-serif text-xl font-semibold text-ink">Order Summary</h2>
           <dl className="mt-5 space-y-3 text-sm">
             <div className="flex justify-between">

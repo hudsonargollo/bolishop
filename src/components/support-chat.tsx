@@ -1,0 +1,278 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { formatPrice } from "@/lib/format";
+import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING, DELIVERY_TIME } from "@/lib/shipping";
+import { CONTACT } from "@/lib/contact";
+
+// Owner's WhatsApp number comes from NEXT_PUBLIC_WHATSAPP_NUMBER (lib/contact).
+// Without it the chat points shoppers to the contact page instead.
+const HAS_WHATSAPP = Boolean(CONTACT.whatsapp);
+
+type Faq = { id: string; label: string; answer: string; keywords: string[] };
+
+const FAQS: Faq[] = [
+  {
+    id: "shipping",
+    label: "🚚 Shipping & delivery",
+    keywords: ["shipping", "delivery", "courier", "days", "how long", "kitne din", "kab aayega", "leopard", "tcs"],
+    answer: `We deliver across Pakistan. Orders arrive in ${DELIVERY_TIME} via Leopards / TCS. Shipping is a flat ${formatPrice(
+      FLAT_SHIPPING
+    )} — and FREE on orders over ${formatPrice(FREE_SHIPPING_THRESHOLD)}.`,
+  },
+  {
+    id: "payment",
+    label: "💵 Payment & COD",
+    keywords: ["payment", "cod", "cash on delivery", "cash", "card", "pay", "online", "paisa", "advance"],
+    answer:
+      "You can pay with Cash on Delivery (COD) or securely online by card/wallet (PayFast & Safepay). No advance needed for COD.",
+  },
+  {
+    id: "returns",
+    label: "🔄 Returns & exchange",
+    keywords: ["return", "exchange", "refund", "wapas", "change", "size change"],
+    answer:
+      "Not happy or need a different size? We offer easy 7-day exchange/return on unused items in original packaging. Message us and we'll arrange it.",
+  },
+  {
+    id: "sizing",
+    label: "📏 Sizing & fit",
+    keywords: ["size", "sizing", "fit", "ring size", "length", "adjustable", "chota", "bara"],
+    answer:
+      "Sizes are listed on each product page, and many rings/bracelets are adjustable. Unsure of your size? Tell us your usual size on WhatsApp and we'll guide you.",
+  },
+  {
+    id: "material",
+    label: "✨ Material & care",
+    keywords: ["material", "gold", "steel", "rust", "care", "tarnish", "allergy", "hypoallergenic", "kaali"],
+    answer:
+      "Our pieces are premium stainless steel — rust-free and hypoallergenic, with gold- or silver-tone finishes (see each product's material). Tip: wear after perfume, keep dry, and wipe with a soft cloth to keep the shine.",
+  },
+  {
+    id: "track",
+    label: "📦 Track my order",
+    keywords: ["track", "tracking", "order status", "where", "kahan", "status", "parcel"],
+    answer:
+      "Track any order on our Order Status page (Help → Order Status) with your order number and email. Once shipped, it shows your courier tracking link.",
+  },
+];
+
+type Msg = { from: "bot" | "user"; text: string };
+
+function waLink(text: string) {
+  return `${CONTACT.whatsappUrl}?text=${encodeURIComponent(text)}`;
+}
+
+export function SupportChat() {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [msgs, setMsgs] = useState<Msg[]>([
+    {
+      from: "bot",
+      text: "Hi! 👋 Welcome to ZARIERA. How can we help today? Pick a topic below, or type your question.",
+    },
+  ]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [msgs, open]);
+
+  const answer = (faq: Faq) => {
+    setMsgs((m) => [
+      ...m,
+      { from: "user", text: faq.label.replace(/^[^\w]+\s*/, "") },
+      { from: "bot", text: faq.answer },
+    ]);
+  };
+
+  const send = () => {
+    const q = input.trim();
+    if (!q) return;
+    setInput("");
+    setMsgs((m) => [...m, { from: "user", text: q }]);
+    const lower = q.toLowerCase();
+    let hit: Faq | undefined;
+    let bestScore = 0;
+    for (const f of FAQS) {
+      const score = f.keywords.reduce((n, k) => (lower.includes(k) ? n + 1 : n), 0);
+      if (score > bestScore) {
+        bestScore = score;
+        hit = f;
+      }
+    }
+    setTimeout(() => {
+      setMsgs((m) => [
+        ...m,
+        hit
+          ? { from: "bot", text: hit.answer }
+          : {
+              from: "bot",
+              text: HAS_WHATSAPP
+                ? "Great question! For anything specific, our team will help you personally on WhatsApp — just tap the green button below. 💬"
+                : "Great question! For anything specific, send us a message from our Contact page and our team will get back to you. 💬",
+            },
+      ]);
+    }, 350);
+  };
+
+  return (
+    <>
+      {/* ── Launcher ── */}
+      <div className="group/launch fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-[70] flex items-center gap-3 sm:bottom-5 sm:right-5">
+        {/* hover label (desktop) */}
+        {!open && (
+          <span className="pointer-events-none hidden translate-x-2 items-center rounded-full border border-[var(--line)] bg-surface px-3.5 py-2 text-sm font-medium text-ink opacity-0 shadow-[0_10px_30px_-12px_rgba(38,8,16,0.4)] transition-all duration-300 group-hover/launch:translate-x-0 group-hover/launch:opacity-100 md:flex">
+            Need help? Chat with us
+          </span>
+        )}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          aria-label={open ? "Close chat" : "Chat with us"}
+          className={`relative flex h-12 w-12 items-center justify-center rounded-full sm:h-14 sm:w-14 bg-gradient-to-br from-gold-hi via-gold to-gold-deep text-maroon shadow-[0_16px_40px_-12px_rgba(169,126,48,0.75)] ring-1 ring-[rgba(230,205,139,0.6)] transition-transform duration-300 hover:scale-110 active:scale-95 ${
+            open ? "" : "animate-chatpulse"
+          }`}
+        >
+          {open ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              className="transition-transform duration-300 group-hover/launch:-rotate-6"
+            >
+              <path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M8.5 12h.01M12 12h.01M15.5 12h.01" strokeLinecap="round" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* ── Panel ── */}
+      {open && (
+        <div className="animate-chatin fixed bottom-20 right-4 z-[70] sm:bottom-24 sm:right-5 flex h-[32rem] max-h-[calc(100dvh-7.5rem)] w-[23rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-3xl border border-[rgba(230,205,139,0.35)] bg-surface shadow-[0_40px_90px_-30px_rgba(38,8,16,0.7)]">
+          {/* Header */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-maroon via-maroon-2 to-wine-deep px-5 pb-5 pt-4 text-light">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.12]"
+              style={{ background: "radial-gradient(120px 80px at 85% 0%, #e6cd8b, transparent 70%)" }}
+            />
+            <div className="relative flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(230,205,139,0.16)] text-gold ring-1 ring-[rgba(230,205,139,0.4)]">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-serif text-lg font-semibold leading-tight">ZARIERA Support</p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-light/75">
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                  Quick answers · team replies {CONTACT.hours}
+                </p>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                className="rounded-full p-1 text-light/80 transition hover:bg-white/10 hover:text-gold"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          {/* gold hairline */}
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-gold to-transparent" />
+
+          {/* Messages (scrolls independently — page stays put) */}
+          <div
+            ref={scrollRef}
+            className="flex-1 space-y-3 overflow-y-auto overscroll-contain bg-cream-soft px-4 py-4"
+          >
+            {msgs.map((m, i) => (
+              <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
+                {m.from === "bot" && (
+                  <span className="mr-2 mt-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-maroon to-wine-deep text-[0.6rem] text-gold">
+                    Z
+                  </span>
+                )}
+                <div
+                  className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-[0_6px_18px_-10px_rgba(38,8,16,0.35)] ${
+                    m.from === "user"
+                      ? "rounded-br-md bg-gradient-to-br from-gold-hi to-gold text-maroon"
+                      : "rounded-bl-md border border-[var(--line)] bg-surface text-ink"
+                  }`}
+                >
+                  {m.text}
+                </div>
+              </div>
+            ))}
+
+            {/* Quick replies */}
+            <div className="pt-1.5">
+              <p className="mb-2 pl-1 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-muted">
+                Popular questions
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {FAQS.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => answer(f)}
+                    className="rounded-full border border-[var(--line-strong)] bg-surface px-3 py-1.5 text-xs font-medium text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-gold hover:text-gold-deep hover:shadow-[0_8px_20px_-10px_rgba(169,126,48,0.6)]"
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* WhatsApp CTA (or contact page when no number is configured) */}
+          <a
+            href={HAS_WHATSAPP ? waLink("Hi ZARIERA! I have a question 😊") : "/contact"}
+            target={HAS_WHATSAPP ? "_blank" : undefined}
+            rel={HAS_WHATSAPP ? "noopener noreferrer" : undefined}
+            className="flex items-center justify-center gap-2 bg-[#25D366] py-2.5 text-sm font-semibold text-white transition hover:brightness-105"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm5.9 14.2c-.2.7-1.2 1.3-1.9 1.4-.5.1-1.1.2-3.5-.8-2.9-1.2-4.8-4.2-4.9-4.4-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.6-.4.8-.4h.6c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6c-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.2.1.4.1.6-.1l.9-1c.2-.2.4-.2.6-.1l1.9.9c.3.1.4.2.5.3.1.3.1.7-.1 1.4z" />
+            </svg>
+            {HAS_WHATSAPP ? "Chat with us on WhatsApp" : "Contact our team"}
+          </a>
+
+          {/* Input */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              send();
+            }}
+            className="flex items-center gap-2 border-t border-[var(--line)] bg-surface px-3 py-2.5"
+          >
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your question…"
+              className="min-w-0 flex-1 rounded-full border border-[var(--line-strong)] bg-cream-soft px-4 py-2.5 text-sm text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.22)]"
+            />
+            <button
+              type="submit"
+              aria-label="Send"
+              disabled={!input.trim()}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold-hi to-gold-deep text-maroon shadow-sm transition hover:opacity-90 disabled:opacity-40"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}

@@ -5,9 +5,10 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { useMounted } from "@/lib/use-mounted";
 
 export type CartItem = {
   id: string;
@@ -33,61 +34,123 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "zariera_cart_v1";
+const EMPTY: CartItem[] = [];
+
+// ---------- localStorage-backed external store (synced across tabs) ----------
+
+let cache: CartItem[] | null = null;
+const listeners = new Set<() => void>();
+
+function read(): CartItem[] {
+  if (cache) return cache;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    cache = Array.isArray(parsed) ? (parsed as CartItem[]) : [];
+  } catch {
+    cache = []; // corrupt or unavailable storage
+  }
+  return cache;
+}
+
+function write(next: CartItem[]) {
+  cache = next;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    /* storage full / unavailable — non-fatal */
+  }
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  const onStorage = (e: StorageEvent) => {
+    if (e.key !== STORAGE_KEY) return;
+    cache = null; // another tab changed the cart
+    listener();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+// Clamp to available stock. A sold-out item (stock 0) clamps to 0 = removed.
+const clamp = (qty: number, stock: number) => Math.max(0, Math.min(Math.floor(qty), stock));
+
+function update(fn: (prev: CartItem[]) => CartItem[]) {
+  write(fn(read()).filter((i) => i.quantity > 0));
+}
+
+// Refresh price / stock / availability snapshots from the server once per page
+// load, so the cart and checkout totals match what will actually be charged.
+let refreshed = false;
+async function refreshFromServer() {
+  const items = read();
+  if (refreshed || items.length === 0) return;
+  refreshed = true;
+  try {
+    const res = await fetch("/api/cart/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: items.map((i) => i.id) }),
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      ok: boolean;
+      products?: { id: string; name: string; price: number; stock: number }[];
+    };
+    if (!data.ok || !data.products) return;
+    const byId = new Map(data.products.map((p) => [p.id, p]));
+    update((prev) =>
+      prev.map((i) => {
+        const p = byId.get(i.id);
+        if (!p) return { ...i, quantity: 0 }; // no longer sold
+        return { ...i, name: p.name, price: p.price, stock: p.stock, quantity: clamp(i.quantity, p.stock) };
+      })
+    );
+  } catch {
+    /* offline / DB down — checkout re-validates anyway */
+  }
+}
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [ready, setReady] = useState(false);
+  const ready = useMounted();
+  const items = useSyncExternalStore(subscribe, read, () => EMPTY);
 
-  // Load from localStorage on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw));
-    } catch {
-      /* ignore corrupt storage */
-    }
-    setReady(true);
+    void refreshFromServer();
   }, []);
 
-  // Persist on change (after initial load)
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      /* storage full / unavailable — non-fatal */
-    }
-  }, [items, ready]);
-
-  const value = useMemo<CartContextValue>(() => {
-    const clamp = (qty: number, stock: number) =>
-      Math.max(1, Math.min(qty, Math.max(1, stock)));
-
-    return {
+  const value = useMemo<CartContextValue>(
+    () => ({
       items,
       count: items.reduce((n, i) => n + i.quantity, 0),
       subtotal: items.reduce((s, i) => s + i.price * i.quantity, 0),
       ready,
       add: (item, qty = 1) =>
-        setItems((prev) => {
+        update((prev) => {
           const existing = prev.find((i) => i.id === item.id);
           if (existing) {
             return prev.map((i) =>
               i.id === item.id
-                ? { ...i, quantity: clamp(i.quantity + qty, item.stock) }
+                ? { ...i, ...item, quantity: clamp(i.quantity + qty, item.stock) }
                 : i
             );
           }
           return [...prev, { ...item, quantity: clamp(qty, item.stock) }];
         }),
-      remove: (id) => setItems((prev) => prev.filter((i) => i.id !== id)),
+      remove: (id) => update((prev) => prev.filter((i) => i.id !== id)),
       setQuantity: (id, qty) =>
-        setItems((prev) =>
-          prev.map((i) => (i.id === id ? { ...i, quantity: clamp(qty, i.stock) } : i))
+        update((prev) =>
+          prev.map((i) => (i.id === id ? { ...i, quantity: Math.max(1, clamp(qty, i.stock)) } : i))
         ),
-      clear: () => setItems([]),
-    };
-  }, [items, ready]);
+      clear: () => write([]),
+    }),
+    [items, ready]
+  );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

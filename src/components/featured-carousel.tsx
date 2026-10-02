@@ -54,14 +54,14 @@ export function FeaturedCarousel({ products }: { products: ProductView[] }) {
       <button
         onClick={() => step(-1)}
         aria-label="Previous"
-        className="absolute -left-3 top-[38%] hidden h-10 w-10 items-center justify-center rounded-full border border-[var(--line-strong)] bg-cream text-maroon shadow-sm transition hover:bg-maroon hover:text-cream md:flex"
+        className="absolute -left-3 top-[38%] hidden h-10 w-10 items-center justify-center rounded-full border border-[var(--line-strong)] bg-cream text-maroon dark:text-ink shadow-sm transition hover:bg-maroon hover:text-light md:flex"
       >
         ‹
       </button>
       <button
         onClick={() => step(1)}
         aria-label="Next"
-        className="absolute -right-3 top-[38%] hidden h-10 w-10 items-center justify-center rounded-full border border-[var(--line-strong)] bg-cream text-maroon shadow-sm transition hover:bg-maroon hover:text-cream md:flex"
+        className="absolute -right-3 top-[38%] hidden h-10 w-10 items-center justify-center rounded-full border border-[var(--line-strong)] bg-cream text-maroon dark:text-ink shadow-sm transition hover:bg-maroon hover:text-light md:flex"
       >
         ›
       </button>
