@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Emblem } from "@/components/brand/emblem";
-import { DELIVERY_TIME } from "@/lib/shipping";
+import { getStoreSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/faq" },
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Answers to common questions about ordering, payment, shipping and returns at ZARIERA.",
 };
 
-const FAQS = [
+const faqs = (DELIVERY_TIME: string) => [
   {
     q: "How do I place an order?",
     a: "Browse the collection, add pieces to your bag, and check out. You can pay Cash on Delivery or securely online by card/wallet.",
@@ -40,7 +40,8 @@ const FAQS = [
   },
 ];
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const FAQS = faqs((await getStoreSettings()).shipping.deliveryTime);
   return (
     <div className="mx-auto max-w-3xl px-5 py-16">
       <div className="text-center">

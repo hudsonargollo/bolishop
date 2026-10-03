@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getProductBySlug, getRelatedProducts } from "@/lib/catalog";
 import { formatPrice, discountPercent } from "@/lib/format";
 import { ProductGallery } from "@/components/product-gallery";
-import { DELIVERY_TIME } from "@/lib/shipping";
+import { getStoreSettings } from "@/lib/settings";
 import { ProductCard } from "@/components/product-card";
 import { AddToCart } from "@/components/cart/add-to-cart";
 import { JsonLd } from "@/components/json-ld";
@@ -55,10 +55,12 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
+  const settings = await getStoreSettings();
+  const DELIVERY_TIME = settings.shipping.deliveryTime;
   const off = discountPercent(product.price, product.compareAtPrice);
   const related = await getRelatedProducts(product);
   const inStock = product.stock > 0;
-  const lowStock = inStock && product.stock <= 5;
+  const lowStock = inStock && product.stock <= settings.inventory.lowStockThreshold;
 
   const desc = product.description ?? "";
   const sentences = desc.split(/(?<=\.)\s+/).map((s) => s.trim()).filter(Boolean);

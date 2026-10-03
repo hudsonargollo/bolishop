@@ -8,12 +8,12 @@ import { SiteHeader } from "./site-header";
 // they read as clean, immersive full-screen pages with their own back link.
 const HIDDEN_ON = ["/login", "/register", "/forgot-password", "/reset-password"];
 
-export function ConditionalHeader() {
+export function ConditionalHeader({ announcements }: { announcements: string[] }) {
   const pathname = usePathname();
   if (HIDDEN_ON.includes(pathname)) return null;
   return (
     <>
-      <Marquee />
+      <Marquee items={announcements} />
       <SiteHeader />
     </>
   );

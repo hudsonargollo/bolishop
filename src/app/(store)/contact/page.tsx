@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Emblem } from "@/components/brand/emblem";
 import { ContactForm } from "@/components/contact-form";
-import { CONTACT } from "@/lib/contact";
+import { getStoreSettings } from "@/lib/settings";
+import { whatsappUrl, phoneHref } from "@/lib/settings-shared";
 import { EmailLink } from "@/components/email-link";
 
 export const metadata: Metadata = {
@@ -18,6 +19,8 @@ export default async function ContactPage({ searchParams }: PageProps<"/contact"
   const sp = await searchParams;
   const raw = (Array.isArray(sp.topic) ? sp.topic[0] : sp.topic) ?? "";
   const topic = raw in TOPICS ? raw : undefined;
+  const settings = await getStoreSettings();
+  const CONTACT = { ...settings.contact, whatsappUrl: whatsappUrl(settings), phoneHref: phoneHref(settings) };
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-16">

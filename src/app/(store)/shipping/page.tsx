@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Emblem } from "@/components/brand/emblem";
 import { formatPrice } from "@/lib/format";
-import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING, DELIVERY_TIME } from "@/lib/shipping";
+import { getStoreSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/shipping" },
@@ -10,7 +10,10 @@ export const metadata: Metadata = {
   description: "ZARIERA shipping options, delivery times, and our returns policy.",
 };
 
-export default function ShippingPage() {
+export default async function ShippingPage() {
+  const { flatFee: FLAT_SHIPPING, freeThreshold: FREE_SHIPPING_THRESHOLD, deliveryTime: DELIVERY_TIME } = (
+    await getStoreSettings()
+  ).shipping;
   return (
     <div className="mx-auto max-w-3xl px-5 py-16">
       <div className="text-center">

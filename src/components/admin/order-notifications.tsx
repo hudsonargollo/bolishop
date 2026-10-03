@@ -123,49 +123,51 @@ export function OrderNotifications() {
     [playDing, router]
   );
 
-  // ── SSE connection (auto-reconnects on drop) ──
+  // ── New-order polling ──
+  // A short request every 10 s (every 30 s while the tab is in the background,
+  // so the sound + OS notification still arrive). Unlike the old
+  // always-open SSE stream it never ties up one of the browser's ~6 connections
+  // per site, which is what made admin pages hang until a hard refresh.
   useEffect(() => {
-    let es: EventSource | null = null;
-    let closed = false;
-    let retry: ReturnType<typeof setTimeout> | undefined;
-    // Resume point: on serverless hosts (Netlify) the stream is cut after a
-    // few seconds, so each reconnect asks for orders created since the last
-    // one we saw — nothing is missed and nothing repeats.
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     let since = new Date().toISOString();
     const seen = new Set<string>();
 
-    const connect = () => {
-      if (closed) return;
-      es = new EventSource(`/api/admin/orders/stream?since=${encodeURIComponent(since)}`);
-      es.addEventListener("ready", () => setConnected(true));
-      es.addEventListener("order", (ev) => {
-        try {
-          const order = JSON.parse((ev as MessageEvent).data);
-          if (seen.has(order.id)) return;
-          seen.add(order.id);
+    const check = async () => {
+      if (stopped) return;
+      try {
+        const res = await fetch(`/api/admin/orders/latest?since=${encodeURIComponent(since)}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as { orders: { id: string; createdAt: string }[] };
+        setConnected(true);
+        for (const order of data.orders) {
           if (order.createdAt > since) since = order.createdAt;
-          handleNewOrder(order);
-        } catch {
-          /* ignore malformed */
+          if (seen.has(order.id)) continue;
+          seen.add(order.id);
+          handleNewOrder(order as Parameters<typeof handleNewOrder>[0]);
         }
-      });
-      es.onerror = () => {
+      } catch {
         setConnected(false);
-        es?.close();
-        // EventSource would retry on its own, but we control the cadence so a
-        // server restart reconnects promptly.
-        if (!closed) {
-          if (retry) clearTimeout(retry);
-          retry = setTimeout(connect, 4000);
-        }
-      };
+      }
     };
 
-    connect();
+    const loop = async () => {
+      await check();
+      if (!stopped) timer = setTimeout(loop, document.visibilityState === "visible" ? 10_000 : 30_000);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+
+    timer = setTimeout(loop, 1500); // let the page finish loading first
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
-      closed = true;
-      if (retry) clearTimeout(retry);
-      es?.close();
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [handleNewOrder]);
 

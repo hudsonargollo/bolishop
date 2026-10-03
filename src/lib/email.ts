@@ -1,5 +1,12 @@
 import nodemailer from "nodemailer";
 import { formatPrice } from "./format";
+import { getStoreSettings } from "./settings";
+
+// Where owner alerts go: Admin → Settings → Notifications, else env.
+async function alertAddress(): Promise<string> {
+  const fromSettings = (await getStoreSettings()).notifications.orderEmail;
+  return fromSettings || process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER || "";
+}
 
 // Transactional email via SMTP. Works with any provider (Gmail, your web-host
 // mailbox, Brevo/SendinBlue, Mailgun SMTP, etc.). Until SMTP env vars are set,
@@ -119,7 +126,7 @@ export async function sendOrderEmails(o: OrderEmailData): Promise<void> {
   }
 
   const from = process.env.MAIL_FROM || `ZARIERA <${process.env.SMTP_USER}>`;
-  const adminTo = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER!;
+  const adminTo = await alertAddress();
 
   try {
     const transport = getTransport();
@@ -177,7 +184,7 @@ export async function sendContactNotification(m: {
 }): Promise<void> {
   if (!emailConfigured()) return; // message is still saved in the admin "Messages" page
   const from = process.env.MAIL_FROM || `ZARIERA <${process.env.SMTP_USER}>`;
-  const to = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER!;
+  const to = await alertAddress();
   try {
     await getTransport().sendMail({
       from,

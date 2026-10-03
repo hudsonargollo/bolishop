@@ -563,3 +563,48 @@ Append one entry per AI/dev session: date, what was done, files changed, DB comm
   bottom padding raised 40 → 80 px (`pb-20`).
 - **Verified** in dark + light, desktop + mobile (main→footer gap 0 px). `tsc`/`eslint` clean.
 - Deploy target confirmed by user: **Netlify** (not Vercel) — config already in place (netlify.toml etc.).
+
+### 2026-10-03 — Admin login hang fixed, Admin Settings, invoice, CSV export (Claude)
+**Login "takes long / only opens after hard refresh"**
+- Measured: the login action itself is ~90 ms; a clean login → dashboard takes 0.5–2.7 s.
+- Two causes: (1) dev mode compiles each admin page on first visit after a restart (not on Netlify);
+  (2) **real bug** — the admin bell kept a permanent SSE connection open per admin tab. Browsers allow
+  ~6 connections per site on HTTP/1.1, so with several tabs new requests (e.g. the post-login redirect)
+  queued until a hard refresh freed one.
+- Fix: SSE removed (`api/admin/orders/stream` + `lib/order-events.ts` deleted, `emitNewOrder` call removed).
+  New `GET /api/admin/orders/latest?since=` (finishes in ~30 ms); `order-notifications.tsx` polls it every
+  10 s (30 s when the tab is in the background so sound/OS notification still arrive), de-dupes by id.
+  Verified: order inserted in the DB → bell alert after 16 s with the tab hidden. Works the same on Netlify.
+
+**Admin → Settings (`/admin/settings`, new menu item)** — model `Setting` (key/value JSON, key `store`),
+migration `20261003100000_store_settings`; `src/lib/settings.ts` (`getStoreSettings` cached per request,
+falls back to env defaults, `saveStoreSettings`, `renderAnnouncements`), `src/lib/settings-shared.ts`
+(type + client-safe helpers `shippingFor`, `whatsappUrl`, `phoneHref`).
+- Sections: Store contact (email, phone, WhatsApp — normalised to digits, city, hours), Social links
+  (https only), Shipping (fee, free-over amount, delivery time), Announcement bar (≤10 lines,
+  `{freeThreshold}`/`{flatFee}` placeholders, empty = hidden), Inventory & notifications (low-stock
+  threshold, order-alert email), My account (change password, min 10 chars, current password required),
+  Team (list, add Admin/Staff with temp password, remove — not yourself, never the last admin).
+- **Roles:** STAFF can use orders/products/categories etc. but sees settings read-only; only ADMIN edits
+  settings/team (`requireOwner` in `settings/actions.ts`).
+- Saving revalidates the whole storefront (`revalidatePath("/", "layout")`) — changes show immediately.
+- Wired everywhere: store layout passes settings to header (marquee), footer, support chat; contact, home,
+  product, FAQ, shipping pages; checkout form + **server-side order total** (`lib/orders.ts`); email alert
+  address (`lib/email.ts`); low-stock count on dashboard/admin-data + product "only N left".
+- Verified: contact change → home + contact page show new phone/WhatsApp at once; shipping fee 300 → real
+  order charged 300; negative fee rejected; announcement line + placeholder rendered; wrong current
+  password / mismatch rejected; staff added, staff sees read-only notice and no team form, staff removed;
+  own account has no Remove button. Test settings reset afterwards (Setting row deleted → defaults).
+
+**Orders extras**
+- **Print invoice / packing slip:** `/admin/invoice/[id]` (outside the dashboard frame, A4-friendly; shows
+  "Cash to collect" for unpaid COD; dashed cut-off packing slip). Button on the order detail page.
+- **Export to Excel (CSV):** `GET /api/admin/orders/export[?status=]` (UTF-8 BOM, formula-injection safe,
+  all fields + items). Button on the Orders page. Verified: 18 orders exported.
+
+**Ops notes**
+- Never run `next build` / `next typegen` while `next dev` is running — they share `.next` and the dev
+  server starts returning 404s for existing routes. Fix: stop dev, delete `.next`, start dev.
+- Dev server running hidden in the background (`npm run dev`, http://localhost:3000).
+- `NETLIFY=true next build` ✓ (new routes included). `tsc` + `eslint` clean.
+- `docs/DEPLOY-NETLIFY.md` updated (Settings section + demo checklist).

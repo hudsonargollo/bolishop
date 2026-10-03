@@ -22,6 +22,18 @@ export default async function AdminOrdersPage() {
           <h1 className="font-serif text-3xl font-bold text-ink">Orders</h1>
           <p className="mt-1 text-sm text-muted">Track, review and update customer orders.</p>
         </div>
+        {orders.length > 0 && (
+          // Plain link (not next/link): it downloads a file.
+          <a
+            href="/api/admin/orders/export"
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--line-strong)] px-4 py-2 text-sm font-medium text-ink transition hover:border-gold hover:text-gold-deep"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+            </svg>
+            Export to Excel (CSV)
+          </a>
+        )}
       </div>
 
       <div className="mt-6">

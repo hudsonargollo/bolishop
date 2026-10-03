@@ -184,3 +184,11 @@ model Subscriber {
   source    String?  // where they signed up (newsletter, notify:<category>)
   createdAt DateTime @default(now())
 }
+
+// ---------- Store settings (editable in Admin → Settings) ----------
+// Key/value JSON, e.g. key "store" holds contact, socials, shipping, etc.
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

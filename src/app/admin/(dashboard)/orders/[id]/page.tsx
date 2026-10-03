@@ -29,6 +29,12 @@ export default async function AdminOrderDetailPage({
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <h1 className="font-serif text-3xl font-semibold text-ink">{order.orderNumber}</h1>
         <StatusBadge status={order.status} />
+        <Link
+          href={`/admin/invoice/${order.id}`}
+          className="ml-auto rounded-lg border border-[var(--line-strong)] px-4 py-2 text-sm font-medium text-ink transition hover:border-gold hover:text-gold-deep"
+        >
+          Print invoice / packing slip
+        </Link>
       </div>
       <p className="mt-1 text-sm text-muted">
         Placed {new Date(order.createdAt).toLocaleString("en-PK")}

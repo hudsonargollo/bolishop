@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { CheckoutForm, type CheckoutDefaults } from "@/components/checkout-form";
 import { payfastConfigured, safepayConfigured } from "@/lib/payments";
 import { getProductBySlug } from "@/lib/catalog";
+import { getStoreSettings } from "@/lib/settings";
 import type { CartItem } from "@/components/cart/cart-provider";
 
 export const metadata: Metadata = {
@@ -59,6 +60,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
       defaults={defaults}
       paymentNotice={paymentNotice}
       buyNow={buyNow}
+      shippingRules={(await getStoreSettings()).shipping}
       gateways={{ PAYFAST: payfastConfigured(), SAFEPAY: safepayConfigured() }}
     />
   );

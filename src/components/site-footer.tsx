@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Emblem } from "./brand/emblem";
-import { CONTACT } from "@/lib/contact";
+import { type StoreSettings, whatsappUrl, phoneHref } from "@/lib/settings-shared";
 import { EmailLink } from "./email-link";
 
-// Contact details & socials come from lib/contact (env-driven). Anything not
-// configured is hidden rather than showing a placeholder.
+// Contact details & socials come from Admin → Settings. Anything left blank is
+// hidden rather than showing a placeholder.
 
 const NAV = [
   { label: "Home", href: "/" },
@@ -28,7 +28,13 @@ const TRUST = [
   "Rust-free & Hypoallergenic",
 ];
 
-export function SiteFooter() {
+export function SiteFooter({ settings }: { settings: StoreSettings }) {
+  const CONTACT = {
+    ...settings.contact,
+    ...settings.social,
+    whatsappUrl: whatsappUrl(settings),
+    phoneHref: phoneHref(settings),
+  };
   return (
     <footer
       className="relative overflow-hidden text-light/80"

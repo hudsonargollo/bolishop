@@ -70,13 +70,21 @@ PowerShell mein pehle `$env:DATABASE_URL="CLOUD_URL"` likh kar phir command chal
 5. If you set `NEXT_PUBLIC_SITE_URL` after the first deploy: **Deploys → Trigger deploy →
    Clear cache and deploy site** (that value is baked in at build time).
 
-## 4. Demo checklist (open the live URL)
+## 4. After the first deploy — Admin → Settings
+
+Contact details, WhatsApp, socials, shipping fee / free-shipping amount, delivery time, the
+announcement bar and the low-stock alert are edited in **Admin → Settings** (no redeploy needed).
+The `NEXT_PUBLIC_*` env values are only the starting defaults. Also set a strong password in
+**Settings → My account** and add staff under **Settings → Team**.
+
+## 5. Demo checklist (open the live URL)
 
 - Home, Shop, a product page, Cart → Checkout (COD) → order placed → **Track Order**
 - Register / Sign in / Forgot password page opens
 - Contact form → message appears in **Admin → Messages**
 - `/admin/login` with the strong password from step 2c → Dashboard, Orders (change status,
-  Book shipment → demo tracking no.), Products (add / edit, **image upload**), Categories
+  Book shipment → demo tracking no., **Print invoice**, **Export to Excel**), Products (add / edit,
+  **image upload**), Categories, **Settings** (change shipping fee → checkout total changes)
 - Footer icons → Instagram / Facebook / TikTok open; Email copies the address
 
 ## Notes for the demo

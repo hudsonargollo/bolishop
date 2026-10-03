@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getStoreSettings } from "@/lib/settings";
 import { getAdminStats, getAdminOrders, getAdminProducts } from "@/lib/admin-data";
 import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
@@ -17,14 +18,16 @@ function formatDate(iso: string): string {
 }
 
 export default async function AdminDashboard() {
-  const [stats, ordersData, productsData] = await Promise.all([
+  const [stats, ordersData, productsData, settings] = await Promise.all([
     getAdminStats(),
     getAdminOrders(),
     getAdminProducts(),
+    getStoreSettings(),
   ]);
+  const LOW = settings.inventory.lowStockThreshold;
   const recentOrders = ordersData.orders.slice(0, 5);
   const lowStockProducts = productsData.products
-    .filter((p) => p.stock <= 5)
+    .filter((p) => p.stock <= LOW)
     .sort((a, b) => a.stock - b.stock)
     .slice(0, 6);
 
@@ -36,7 +39,7 @@ export default async function AdminDashboard() {
     { label: "Pending", value: String(stats.pendingOrders), icon: <ClockIcon />, hint: "Awaiting action" },
     { label: "Products", value: String(stats.products), icon: <TagIcon />, hint: "In catalog" },
     { label: "Customers", value: String(stats.customers), icon: <UsersIcon />, hint: "Registered shoppers" },
-    { label: "Low stock", value: String(stats.lowStock), icon: <AlertIcon />, hint: "5 or fewer left" },
+    { label: "Low stock", value: String(stats.lowStock), icon: <AlertIcon />, hint: `${LOW} or fewer left` },
   ];
 
   return (
@@ -159,7 +162,7 @@ export default async function AdminDashboard() {
               </span>
               <div>
                 <h2 className="font-serif text-xl font-semibold text-ink">Low stock alert</h2>
-                <p className="text-xs text-muted">Products with 5 or fewer left — restock soon.</p>
+                <p className="text-xs text-muted">Products with {LOW} or fewer left — restock soon.</p>
               </div>
             </div>
             <Link href="/admin/products" className="shrink-0 text-sm text-gold-deep hover:underline">

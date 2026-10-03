@@ -7,7 +7,7 @@ import { useCart, type CartItem } from "@/components/cart/cart-provider";
 import { ProductImage } from "@/components/product-image";
 import { useToast } from "@/components/ui/toast";
 import { formatPrice } from "@/lib/format";
-import { shippingFor, FREE_SHIPPING_THRESHOLD } from "@/lib/shipping";
+import { shippingFor } from "@/lib/settings-shared";
 
 // Mirrors MIN_PASSWORD in lib/password.ts (that module uses node:crypto, so it
 // can't be imported into this client component).
@@ -35,7 +35,9 @@ export function CheckoutForm({
   paymentNotice = null,
   gateways = { PAYFAST: false, SAFEPAY: false },
   buyNow = null,
+  shippingRules = { flatFee: 500, freeThreshold: 50000, deliveryTime: "" },
 }: {
+  shippingRules?: { flatFee: number; freeThreshold: number; deliveryTime: string };
   buyNow?: CartItem | null;
   defaults?: CheckoutDefaults;
   paymentNotice?: keyof typeof NOTICES | null;
@@ -56,7 +58,7 @@ export function CheckoutForm({
   const isGuest = !defaults?.email;
   const [createAccount, setCreateAccount] = useState(false);
 
-  const shipping = shippingFor(subtotal);
+  const shipping = shippingFor(subtotal, shippingRules);
   const total = subtotal + shipping;
 
   const paymentNoticeShown = useRef(false);
@@ -303,7 +305,7 @@ export function CheckoutForm({
                 <dd className="text-ink">{shipping === 0 ? "Free" : formatPrice(shipping)}</dd>
               </div>
               {shipping > 0 && (
-                <p className="text-xs text-muted">Free shipping over {formatPrice(FREE_SHIPPING_THRESHOLD)}.</p>
+                <p className="text-xs text-muted">Free shipping over {formatPrice(shippingRules.freeThreshold)}.</p>
               )}
             </dl>
 

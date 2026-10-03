@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { getStoreSettings } from "./settings";
 import { ORDER_STATUSES } from "./order-status";
 
 export type AdminStats = {
@@ -26,7 +27,7 @@ export async function getAdminStats(): Promise<AdminStats> {
         prisma.order.count({ where: { status: "PENDING" } }),
         prisma.order.aggregate({ _sum: { total: true }, where: { status: { not: "CANCELLED" } } }),
         prisma.customer.count(),
-        prisma.product.count({ where: { stock: { lte: 5 } } }),
+        prisma.product.count({ where: { stock: { lte: (await getStoreSettings()).inventory.lowStockThreshold } } }),
         prisma.order.count({ where: { createdAt: { gte: monthStart } } }),
         prisma.order.aggregate({
           _sum: { total: true },

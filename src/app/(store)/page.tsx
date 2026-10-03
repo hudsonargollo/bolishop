@@ -13,8 +13,7 @@ import { Reveal } from "@/components/reveal";
 import { JsonLd } from "@/components/json-ld";
 
 import { siteUrl } from "@/lib/site";
-import { CONTACT } from "@/lib/contact";
-import { FREE_SHIPPING_THRESHOLD } from "@/lib/shipping";
+import { getStoreSettings } from "@/lib/settings";
 import { formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -43,16 +42,19 @@ const websiteJsonLd = {
   },
 };
 
-const TRUST = [
+const trustBadges = (freeThreshold: number) => [
   { title: "Rust-free & hypoallergenic", body: "Premium stainless steel, gentle on skin." },
   { title: "Cash on Delivery", body: "Pay at your doorstep, nationwide." },
-  { title: "Free shipping", body: `On orders over ${formatPrice(FREE_SHIPPING_THRESHOLD)}.` },
+  { title: "Free shipping", body: `On orders over ${formatPrice(freeThreshold)}.` },
   { title: "Won't tarnish", body: "Keeps its shine wear after wear." },
 ];
 
 export const revalidate = 300;
 
 export default async function HomePage() {
+  const settings = await getStoreSettings();
+  const TRUST = trustBadges(settings.shipping.freeThreshold);
+  const CONTACT = settings.social;
   const [featured, newest, categories] = await Promise.all([
     getFeaturedProducts(8),
     getProducts({ sort: "newest" }),

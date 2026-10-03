@@ -1,11 +1,10 @@
 import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "./prisma";
-import { shippingFor } from "./shipping";
+import { shippingFor } from "./settings-shared";
+import { getStoreSettings } from "./settings";
 import { sendOrderEmails } from "./email";
-import { emitNewOrder } from "./order-events";
 
-export { shippingFor, FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING } from "./shipping";
 
 export const checkoutSchema = z.object({
   customerName: z.string().trim().min(2, "Please enter your full name").max(120),
@@ -113,7 +112,8 @@ export async function createOrder(
     });
 
     const subtotal = lineItems.reduce((s, i) => s + i.price * i.quantity, 0);
-    const shipping = shippingFor(subtotal);
+    // Shipping rules come from Admin → Settings (same values the checkout shows).
+    const shipping = shippingFor(subtotal, (await getStoreSettings()).shipping);
     const total = subtotal + shipping;
     const email = data.email.trim().toLowerCase();
 
@@ -176,19 +176,7 @@ export async function createOrder(
     }
     if (!createdOrder) throw new Error("Could not allocate an order number");
 
-    // Push a real-time notification to any admin watching the dashboard.
-    // Best-effort — a notification failure must never affect the saved order.
-    try {
-      emitNewOrder({
-        id: createdOrder.id,
-        orderNumber,
-        total,
-        customerName: data.customerName,
-        createdAt: createdOrder.createdAt.toISOString(),
-      });
-    } catch (notifyErr) {
-      console.error("[order] notification emit failed (order still saved):", notifyErr);
-    }
+    // (Admins see new orders via the dashboard bell, which polls /api/admin/orders/latest.)
 
     // Order is safely saved. Email is best-effort — never fail a saved order
     // just because SMTP is unavailable.

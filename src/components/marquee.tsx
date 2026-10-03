@@ -1,18 +1,10 @@
-import { FREE_SHIPPING_TEXT } from "@/lib/shipping";
-
 // Continuous scrolling announcement strip (pure CSS, pauses on hover).
+// Lines are edited in Admin → Settings → Announcement bar.
 
-const ITEMS = [
-  FREE_SHIPPING_TEXT,
-  "Cash on Delivery available nationwide",
-  "Premium stainless steel — rust-free & hypoallergenic",
-  "Complimentary care guidance with every order",
-  "Secure checkout",
-];
-
-export function Marquee() {
+export function Marquee({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
   // Rendered twice back-to-back so the -50% translate loops seamlessly.
-  const strip = [...ITEMS, ...ITEMS];
+  const strip = [...items, ...items];
 
   return (
     <div

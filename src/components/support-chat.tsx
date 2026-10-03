@@ -2,23 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatPrice } from "@/lib/format";
-import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING, DELIVERY_TIME } from "@/lib/shipping";
-import { CONTACT } from "@/lib/contact";
+import { type StoreSettings, whatsappUrl } from "@/lib/settings-shared";
 
-// Owner's WhatsApp number comes from NEXT_PUBLIC_WHATSAPP_NUMBER (lib/contact).
-// Without it the chat points shoppers to the contact page instead.
-const HAS_WHATSAPP = Boolean(CONTACT.whatsapp);
 
 type Faq = { id: string; label: string; answer: string; keywords: string[] };
 
-const FAQS: Faq[] = [
+function buildFaqs(st: StoreSettings): Faq[] {
+  const { deliveryTime, flatFee, freeThreshold } = st.shipping;
+  return [
   {
     id: "shipping",
     label: "🚚 Shipping & delivery",
     keywords: ["shipping", "delivery", "courier", "days", "how long", "kitne din", "kab aayega", "leopard", "tcs"],
-    answer: `We deliver across Pakistan. Orders arrive in ${DELIVERY_TIME} via Leopards / TCS. Shipping is a flat ${formatPrice(
-      FLAT_SHIPPING
-    )} — and FREE on orders over ${formatPrice(FREE_SHIPPING_THRESHOLD)}.`,
+    answer: `We deliver across Pakistan. Orders arrive in ${deliveryTime} via Leopards / TCS. Shipping is a flat ${formatPrice(
+      flatFee
+    )} — and FREE on orders over ${formatPrice(freeThreshold)}.`,
   },
   {
     id: "payment",
@@ -56,14 +54,18 @@ const FAQS: Faq[] = [
       "Track any order on our Order Status page (Help → Order Status) with your order number and email. Once shipped, it shows your courier tracking link.",
   },
 ];
+}
 
 type Msg = { from: "bot" | "user"; text: string };
 
-function waLink(text: string) {
-  return `${CONTACT.whatsappUrl}?text=${encodeURIComponent(text)}`;
-}
 
-export function SupportChat() {
+
+export function SupportChat({ settings }: { settings: StoreSettings }) {
+  const FAQS = buildFaqs(settings);
+  const WA = whatsappUrl(settings);
+  const HAS_WHATSAPP = Boolean(WA);
+  const waLink = (text: string) => `${WA}?text=${encodeURIComponent(text)}`;
+  const CONTACT = settings.contact;
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([
