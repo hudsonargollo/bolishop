@@ -9,6 +9,7 @@ import { startCustomerSession, endCustomerSession, safeNext } from "@/lib/custom
 import { clientIp, rateLimit, TOO_MANY } from "@/lib/rate-limit";
 import { createToken, readToken } from "@/lib/session-token";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { logDbError } from "@/lib/db-errors";
 import { siteUrl } from "@/lib/site";
 
 export type AuthState = { error?: string; ok?: boolean; message?: string; values?: Record<string, string> };
@@ -55,12 +56,12 @@ async function register(_prev: AuthState, formData: FormData): Promise<AuthState
       data: { name, email: e, passwordHash: hashPassword(password) },
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (/connect|ECONNREFUSED|P1001|P1000/i.test(msg)) {
-      return { error: "Service unavailable. Please try again shortly." };
-    }
-    if (/Unique constraint|P2002/i.test(msg)) {
+    const kind = logDbError("register", err);
+    if (kind === "duplicate") {
       return { error: "An account with this email already exists. Please sign in or reset your password." };
+    }
+    if (kind === "unavailable" || kind === "not-migrated" || kind === "engine") {
+      return { error: "Service unavailable. Please try again shortly." };
     }
     return { error: "Could not create your account. Please try again." };
   }
@@ -86,7 +87,8 @@ async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
   let customer;
   try {
     customer = await prisma.customer.findUnique({ where: { email } });
-  } catch {
+  } catch (err) {
+    logDbError("login", err);
     return { error: "Service unavailable. Please try again shortly." };
   }
 

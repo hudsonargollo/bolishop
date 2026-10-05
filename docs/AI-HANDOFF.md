@@ -639,3 +639,23 @@ falls back to env defaults, `saveStoreSettings`, `renderAnnouncements`), `src/li
   needs Vercel Blob). Should change — `next.config.ts` should also skip `output: "standalone"` when
   `VERCEL=1`; migrations aren't run by Vercel's default build (Neon is already migrated; future schema changes
   need `prisma migrate deploy` or a build command). Vercel Hobby plan is non-commercial → Pro for a live store.
+
+### 2026-10-05 — Vercel deployment: register failing, diagnostics + Vercel support (Claude)
+- User deployed via Vercel (repo is connected; GitHub `main` = `5ba9aa7`, so Vercel runs the current code).
+  Live URL is behind Vercel Deployment Protection, so it couldn't be probed from here.
+- "Could not create your account" = the generic branch: the DB call failed with an error the old regex
+  didn't classify, and **nothing was logged**. Most likely cause: Vercel `DATABASE_URL` wrong (localhost from
+  a copied `.env`, or Neon pooled URL without `pgbouncer=true` / with `channel_binding=require`).
+- Added `src/lib/db-errors.ts` (`dbErrorKind`, `logDbError`) — register/login now log the real error and map
+  unavailable / duplicate / not-migrated / engine; admin login logs DB errors; catalog's silent sample-data
+  fallback now logs `[catalog] DATABASE UNAVAILABLE` on every hit in production.
+- New **`GET /api/health`**: DB URL sanity (host only, pooled/pgbouncer/channel_binding flags), DIRECT_URL,
+  AUTH_SECRET, site URL, DB connect, required tables, counts, upload backend + `warnings` list. No secrets.
+  (localhost only flagged on Vercel/Netlify.)
+- **Vercel support:** `next.config.ts` skips `output: "standalone"` when `VERCEL` is set (`VERCEL=1 next build`
+  ✓, no standalone dir); uploads use **Vercel Blob** when `BLOB_READ_WRITE_TOKEN` exists (new dep
+  `@vercel/blob` 2.8, public URL stored on the product), clear error on Vercel without a Blob store.
+- New guide **`docs/DEPLOY-VERCEL.md`** (env vars, Neon, Blob store, /api/health, Deployment Protection).
+- Mistake noted: ran `next typegen` while `next dev` was running → corrupted `.next/dev/types`; fixed by
+  stopping dev and deleting `.next`. Rule stands: never build/typegen while dev runs.
+- tsc/eslint clean. Dev server restarted (local DB).

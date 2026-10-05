@@ -34,9 +34,10 @@ export function sniffImage(buf: Buffer): ImageExt | null {
 export const SAFE_UPLOAD_NAME = /^[a-z0-9-]{1,80}\.(jpg|png|webp|avif)$/;
 
 // ---------- Storage backends ----------
-// Disk (UPLOAD_DIR) on a normal Node server / VPS. On Netlify the server
-// filesystem is read-only, so files go to Netlify Blobs instead (store
-// "product-uploads"); if a disk write fails for any reason we fall back too.
+//  - Vercel: Vercel Blob (needs a Blob store connected to the project → it sets
+//    BLOB_READ_WRITE_TOKEN). Files get a public CDN URL that is stored as-is.
+//  - Netlify: Netlify Blobs (store "product-uploads"), served by /uploads/products/[file].
+//  - VPS / local: disk (UPLOAD_DIR), served by /uploads/products/[file].
 
 const BLOB_STORE = "product-uploads";
 
@@ -49,13 +50,26 @@ async function blobStore() {
   return getStore({ name: BLOB_STORE, consistency: "strong" });
 }
 
-export async function saveUpload(filename: string, bytes: Buffer): Promise<void> {
+/** Saves an uploaded image and returns the URL to store on the product. */
+export async function saveUpload(filename: string, bytes: Buffer, ext: ImageExt): Promise<string> {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { put } = await import("@vercel/blob");
+    const blob = await put(`products/${filename}`, bytes, {
+      access: "public",
+      contentType: IMAGE_TYPES[ext],
+      addRandomSuffix: false,
+    });
+    return blob.url;
+  }
+  if (process.env.VERCEL) {
+    throw new Error("Image uploads on Vercel need a Blob store: Vercel → Storage → Create → Blob, then connect it to this project.");
+  }
   if (!onNetlify()) {
     try {
       const { mkdir, writeFile } = await import("node:fs/promises");
       await mkdir(PRODUCT_UPLOAD_DIR, { recursive: true });
       await writeFile(path.join(PRODUCT_UPLOAD_DIR, filename), bytes);
-      return;
+      return `/uploads/products/${filename}`;
     } catch (err) {
       console.warn("[upload] disk write failed, trying Netlify Blobs:", err);
     }
@@ -63,6 +77,7 @@ export async function saveUpload(filename: string, bytes: Buffer): Promise<void>
   const store = await blobStore();
   const ab = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   await store.set(filename, ab);
+  return `/uploads/products/${filename}`;
 }
 
 export async function readUpload(filename: string): Promise<Buffer | null> {

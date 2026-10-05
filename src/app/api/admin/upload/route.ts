@@ -50,12 +50,14 @@ export async function POST(request: Request) {
       .slice(0, 40) || "image";
   const filename = `${base}-${Date.now()}.${ext}`;
 
+  let url: string;
   try {
-    await saveUpload(filename, bytes);
+    url = await saveUpload(filename, bytes, ext);
   } catch (err) {
     console.error("[upload] failed:", err);
-    return NextResponse.json({ ok: false, error: "Could not save the image." }, { status: 500 });
+    const msg = err instanceof Error && /Blob store/.test(err.message) ? err.message : "Could not save the image.";
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, url: `/uploads/products/${filename}` }, { status: 201 });
+  return NextResponse.json({ ok: true, url }, { status: 201 });
 }

@@ -1,14 +1,13 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
-// Netlify sets NETLIFY=true during its builds. Its Next.js runtime packages the
-// app itself, so the self-contained "standalone" output is only used for
-// Docker / VPS deployments.
-const onNetlify = process.env.NETLIFY === "true";
+// Netlify (NETLIFY=true) and Vercel (VERCEL=1) package the app themselves, so
+// the self-contained "standalone" output is only used for Docker / VPS.
+const onManagedHost = process.env.NETLIFY === "true" || Boolean(process.env.VERCEL);
 
 const nextConfig: NextConfig = {
   // Self-contained build output for Docker / VPS deployment.
-  output: onNetlify ? undefined : "standalone",
+  output: onManagedHost ? undefined : "standalone",
 
   // Pin the workspace root to this project so Next.js doesn't pick up
   // an unrelated package-lock.json from a parent directory.

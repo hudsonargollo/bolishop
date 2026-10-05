@@ -9,6 +9,12 @@ import type { CategoryView, ProductView, ProductFilters } from "./types";
 
 let warned = false;
 function warnFallback(err: unknown) {
+  // In production this means the live DB is unreachable — log every time so it
+  // shows up in the host's function logs instead of silently serving samples.
+  if (process.env.NODE_ENV === "production") {
+    console.error("[catalog] DATABASE UNAVAILABLE — serving sample data:", err);
+    return;
+  }
   if (!warned) {
     warned = true;
     console.warn(

@@ -16,8 +16,8 @@ export async function verifyCredentials(
     if (user && verifyPassword(password, user.passwordHash)) {
       return { ok: true, role: user.role };
     }
-  } catch {
-    /* DB unavailable */
+  } catch (err) {
+    console.error("[admin-login] database error:", err);
   }
 
   return { ok: false };
