@@ -627,3 +627,15 @@ falls back to env defaults, `saveStoreSettings`, `renderAnnouncements`), `src/li
 - To switch back to local: set `DATABASE_URL` and `DIRECT_URL` to `LOCAL_DATABASE_URL`, restart `npm run dev`.
 - Security note: the Neon password was shared in chat — consider resetting it in Neon (Roles → Reset
   password) after the demo and updating `.env` + Netlify.
+
+### 2026-10-05 — Reverted local app to the local DB; Vercel question (Claude)
+- On request, `.env` restored from the pre-Neon backup → `DATABASE_URL`/`DIRECT_URL` = local Postgres again
+  (Neon version of `.env` saved in the session scratchpad). Dev server restarted; /shop shows 15 products,
+  `migrate status` (localhost) up to date. **Neon data was left in place** (schema + copied data) for deploy.
+- User asked whether the project works on **Vercel** now. Assessment (no code changed yet):
+  works — storefront, checkout, accounts, admin, settings, bell polling, invoice/CSV, Prisma
+  (`rhel-openssl-3.0.x` target + `postinstall: prisma generate`), Neon.
+  Does NOT work yet — **admin image upload** (Vercel filesystem is read-only; Netlify Blobs is Netlify-only →
+  needs Vercel Blob). Should change — `next.config.ts` should also skip `output: "standalone"` when
+  `VERCEL=1`; migrations aren't run by Vercel's default build (Neon is already migrated; future schema changes
+  need `prisma migrate deploy` or a build command). Vercel Hobby plan is non-commercial → Pro for a live store.
