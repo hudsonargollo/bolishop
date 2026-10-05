@@ -608,3 +608,22 @@ falls back to env defaults, `saveStoreSettings`, `renderAnnouncements`), `src/li
 - Dev server running hidden in the background (`npm run dev`, http://localhost:3000).
 - `NETLIFY=true next build` ✓ (new routes included). `tsc` + `eslint` clean.
 - `docs/DEPLOY-NETLIFY.md` updated (Settings section + demo checklist).
+
+### 2026-10-05 — Local app switched to the Neon cloud DB (Claude)
+- User-provided Neon project (region **ap-southeast-1 / Singapore**, PostgreSQL 18.6, db `neondb`).
+- `.env` (git-ignored; previous copy backed up in the session scratchpad):
+  - `DATABASE_URL` = Neon **pooled** host (`…-pooler…`) + `sslmode=require&pgbouncer=true&connection_limit=5`
+  - `DIRECT_URL`   = Neon **direct** host (same URL without `-pooler`) — used by `prisma migrate`
+  - `LOCAL_DATABASE_URL` = old local Postgres (for `db:copy` / switching back)
+  - `channel_binding=require` from Neon's copy-paste string was dropped — Prisma's driver doesn't support
+    it; `sslmode=require` keeps TLS.
+- `npx prisma migrate deploy` → all 8 migrations applied on Neon; status "up to date".
+- `npm run db:copy` local → Neon: 4 categories, 15 products, 1 admin (same login as local), 4 customers,
+  18 orders, 36 items. (Includes the 16 `QATEST-` demo orders — delete before go-live, see §9.)
+- Dev server restarted on Neon. Proof: a test order placed through the website appeared in Neon and NOT
+  in the local DB (then deleted, stock restored). /shop lists all 15 products.
+- **For Netlify:** use the same two URLs in the Netlify env vars, but with `connection_limit=1` on
+  `DATABASE_URL` (serverless). Migrations already applied — the build's `prisma migrate deploy` will be a no-op.
+- To switch back to local: set `DATABASE_URL` and `DIRECT_URL` to `LOCAL_DATABASE_URL`, restart `npm run dev`.
+- Security note: the Neon password was shared in chat — consider resetting it in Neon (Roles → Reset
+  password) after the demo and updating `.env` + Netlify.
