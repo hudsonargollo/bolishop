@@ -686,3 +686,8 @@ falls back to env defaults, `saveStoreSettings`, `renderAnnouncements`), `src/li
 - Link/button audit (all storefront pages): every internal link 200/expected redirect, every #anchor exists,
   no placeholder/test words in visible text, all pages titled. Custom form verified desktop + mobile (no
   horizontal overflow), error keeps all values, valid submit → Messages. Test data deleted.
+
+### 2026-10-20 — Custom page button wording (Claude)
+- User: "Start Your Design" sounds like a design tool opens, but it leads to a form. Changed to
+  **"Request a Custom Piece"** with a hint below: "Fill a short form — takes 2 minutes, no payment needed."
+  (`src/app/(store)/custom/page.tsx`). Verified in the browser; tsc/eslint clean.

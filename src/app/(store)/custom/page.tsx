@@ -38,8 +38,11 @@ export default async function CustomPage() {
             href="#design-request"
             className="mt-9 inline-block rounded-full bg-maroon px-9 py-3.5 text-sm font-medium uppercase tracking-[0.12em] text-light transition hover:bg-maroon-2"
           >
-            Start Your Design
+            Request a Custom Piece
           </a>
+          <p className="mt-3 text-xs text-muted">
+            Fill a short form — takes 2 minutes, no payment needed.
+          </p>
         </div>
       </OrnateFrame>
 
