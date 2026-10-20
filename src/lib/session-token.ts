@@ -6,7 +6,7 @@ import { timingSafeEqual, createHmac } from "node:crypto";
 // token minted for one kind can never be replayed as another — e.g. a customer
 // cookie pasted into the admin cookie fails verification.
 
-export type TokenKind = "admin" | "customer" | "reset";
+export type TokenKind = "admin" | "customer" | "reset" | "verify";
 
 const DEV_FALLBACK = "dev-secret-change-me";
 
@@ -18,6 +18,11 @@ function baseSecret(): string {
     throw new Error("AUTH_SECRET must be set (16+ characters) in production.");
   }
   return secret || DEV_FALLBACK;
+}
+
+/** A key derived from AUTH_SECRET for a given purpose (e.g. hashing OTP codes). */
+export function derivedKey(label: string): Buffer {
+  return createHmac("sha256", baseSecret()).update(`zariera:${label}`).digest();
 }
 
 function sign(kind: TokenKind, payload: string): string {

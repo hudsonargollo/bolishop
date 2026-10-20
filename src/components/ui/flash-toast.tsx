@@ -33,6 +33,12 @@ const MESSAGES: Record<
   },
   "delete-failed": { variant: "error", message: "Could not delete — please try again.", title: "Not deleted" },
   "password-reset": { variant: "success", message: "Your password has been updated.", title: "All set" },
+  "email-verified": { variant: "success", message: "Your email is verified.", title: "Thank you" },
+  "verify-send-failed": {
+    variant: "error",
+    message: "We couldn't send the verification code right now. Please try again in a moment.",
+    title: "Not sent",
+  },
 };
 
 function FlashToastInner() {

@@ -157,9 +157,30 @@ model Customer {
   email        String   @unique
   passwordHash String
   phone        String?
+  // Set once the customer proves they own the email (OTP). Null = unverified
+  // (accounts created before OTP existed, or via checkout sign-up).
+  emailVerifiedAt DateTime?
   orders       Order[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// One-time email codes (OTP). Only a hash of the code is stored.
+//  purpose "register": pending sign-up — payload holds name + passwordHash until verified.
+//  purpose "verify":   an existing customer confirming their email.
+model EmailVerification {
+  id          String   @id @default(cuid())
+  email       String
+  purpose     String
+  codeHash    String
+  payload     Json?
+  attempts    Int      @default(0)
+  sendCount   Int      @default(1)
+  lastSentAt  DateTime @default(now())
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([email, purpose])
 }
 
 // ---------- Inbound (contact form + newsletter) ----------

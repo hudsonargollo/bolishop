@@ -89,6 +89,8 @@ export async function GET() {
         ? "NOT CONFIGURED (create a Vercel Blob store)"
         : "disk";
   if (uploads.startsWith("NOT")) warnings.push("Admin image uploads need a Vercel Blob store (Storage → Create → Blob, connect to this project).");
+  if (!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS))
+    warnings.push("SMTP is not set — new customers can't get their sign-up verification code (and order / reset emails aren't sent). Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM.");
 
   const ok = database.ok && tables.ok && secret.length >= 16 && !(managedHost && url.isLocalhost);
   return NextResponse.json(

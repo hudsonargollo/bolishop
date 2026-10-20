@@ -204,3 +204,47 @@ export async function sendContactNotification(m: {
     console.error("[email] Failed to send contact notification:", err);
   }
 }
+
+// One-time verification code (sign-up / email verification).
+// Without SMTP: in development the code is printed to the server console so the
+// flow can be tested; in production sending fails (sign-up can't be verified).
+export async function sendOtpEmail(
+  to: string,
+  code: string,
+  purpose: "register" | "verify"
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!emailConfigured()) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`\n[email] SMTP not configured — DEV ONLY verification code for ${to}: ${code}\n`);
+      return { ok: true };
+    }
+    console.error("[email] SMTP not configured — cannot send verification code");
+    return { ok: false, error: "We can't send verification emails right now. Please try again later or contact us." };
+  }
+  const from = process.env.MAIL_FROM || `ZARIERA <${process.env.SMTP_USER}>`;
+  const spaced = code.split("").join(" ");
+  const title = purpose === "register" ? "Confirm your email" : "Verify your email";
+  try {
+    await getTransport().sendMail({
+      from,
+      to,
+      subject: `${code} is your ZARIERA verification code`,
+      text: `Your ZARIERA verification code is ${code}. It expires in 10 minutes. If you didn't request it, you can ignore this email.`,
+      html: shell(
+        title,
+        `<p style="color:#3a231e;font-size:14px">Use this code to ${
+          purpose === "register" ? "finish creating your ZARIERA account" : "verify your email address"
+        }:</p>
+         <p style="margin:22px 0;text-align:center">
+           <span style="display:inline-block;background:#f4e8d5;border:1px solid #c39a4e;border-radius:10px;padding:14px 22px;font-size:30px;font-weight:700;letter-spacing:8px;color:#5b1a2b;font-family:'Courier New',monospace">${escape(spaced)}</span>
+         </p>
+         <p style="color:#8a6f63;font-size:13px">This code expires in <strong>10 minutes</strong>. Never share it with anyone — ZARIERA will never ask you for it by phone or WhatsApp.</p>
+         <p style="color:#8a6f63;font-size:13px">If you didn&rsquo;t try to sign up, you can safely ignore this email.</p>`
+      ),
+    });
+    return { ok: true };
+  } catch (err) {
+    console.error("[email] Failed to send verification code:", err);
+    return { ok: false, error: "We couldn't send the code. Please check your email address and try again." };
+  }
+}

@@ -29,7 +29,7 @@ export function RegisterForm({ next }: { next?: string }) {
     <AuthShell>
       <div className="text-center">
         <h1 className="font-serif text-3xl font-bold text-ink">Create account</h1>
-        <p className="mt-1 text-sm text-muted">Join ZARIERA for a faster checkout.</p>
+        <p className="mt-1 text-sm text-muted">Join ZARIERA for a faster checkout. We&apos;ll email you a code to confirm it&apos;s you.</p>
       </div>
 
       <form action={formAction} className="mt-7 space-y-4">
@@ -53,7 +53,7 @@ export function RegisterForm({ next }: { next?: string }) {
         )}
 
         <button type="submit" disabled={pending} className={submitBtn}>
-          {pending ? "Creating account…" : "Create Account"}
+          {pending ? "Sending code…" : "Continue"}
         </button>
       </form>
 

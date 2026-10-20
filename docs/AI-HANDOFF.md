@@ -158,6 +158,7 @@ Data layer: **`src/lib/admin-data.ts`** — all admin aggregations
 - **User** (email, passwordHash, role) — admin accounts
 - **ContactMessage** (name, email, phone, subject, message, topic, handled) — contact form inbox *(new 2026-10-02)*
 - **Subscriber** (email unique, source) — newsletter + "notify me" sign-ups *(new 2026-10-02)*
+- **EmailVerification** (email+purpose unique, codeHash = HMAC, payload JSON, attempts, sendCount, lastSentAt, expiresAt) — sign-up / verify-email OTP codes *(new 2026-10-20)*; **Customer.emailVerifiedAt** (null = not verified)
 - Status rules live in `src/lib/order-status.ts` (`ORDER_TRANSITIONS`, `PAYMENT_TRANSITIONS`). DELIVERED/CANCELLED are final; cancelling restocks once (`cancelOrderAndRestock` in `lib/orders.ts`).
 - Enums: `OrderStatus` (PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED), `PaymentMethod` (COD, PAYFAST, SAFEPAY), `PaymentStatus`, `Role`
 
@@ -167,6 +168,7 @@ Data layer: **`src/lib/admin-data.ts`** — all admin aggregations
 
 - **Order flow fixed** — no fake-success; real errors surfaced; stock decremented atomically.
 - **Guest checkout** + optional account creation on first order.
+- **Email OTP at sign-up** — 6-digit code emailed before the account is created (see §14, 2026-10-20).
 - **Dark / light mode** (token flip, no-flash script) — brand-safe colors.
 - **Fully responsive** (mobile + tablet), no horizontal overflow.
 - **Toasts everywhere** — add-to-cart, buy-now, quick-add, cart remove, newsletter, checkout,
@@ -725,3 +727,55 @@ falls back to env defaults, `saveStoreSettings`, `renderAnnouncements`), `src/li
   **Not yet tested against the live API** (no key available here). Cost: per message, Claude Opus 5.5 rates
   ($4 / $20 per MTok, cached prompt reads $0.20); switch with `CHAT_MODEL` if needed.
 - Env templates updated: `.env.example`, `netlify.env.example`, `docs/DEPLOY-VERCEL.md`.
+
+### 2026-10-20 — Email OTP verification at registration
+
+**Request:** "register karta hai to … sath otp verification hona chahiye … professional working".
+
+**Flow:** `/register` (name, email, password → **Continue**) → server validates, rejects existing email, emails a
+6-digit code, redirects to **`/register/verify`** ("Step 2 of 2 · Verify your email") → correct code →
+account is created **already verified** → logged in → `next` page with the "Welcome" toast. The account is
+**not** created until the code is confirmed (nobody can register an email they don't own).
+
+**Security / rules (`src/lib/otp.ts`):**
+- Code from `crypto.randomInt`, stored only as HMAC-SHA256 (key derived from AUTH_SECRET via
+  `derivedKey("otp")` in `session-token.ts`); timing-safe compare.
+- Expires in **10 min**; **5 wrong attempts** burn the code ("Incorrect code. 4 attempts left." …).
+- Resend: **60 s cooldown** (live countdown on the page), max **5 codes / hour** per email; rate limits per IP
+  (`otp:` 25/10 min, `otp-resend:` 10/h, register 8/h).
+- The pending sign-up lives in a signed httpOnly cookie `zariera_verify` (30 min, token kind `verify`) — the
+  email never goes in the URL. Name + password **hash** wait in `EmailVerification.payload` until verified.
+- Code is deleted after use (can't be reused).
+
+**Existing customers** (made at checkout / before OTP): account page shows a gold **"Please verify your email"**
+banner → **Verify email** → `/account/verify-email` → code → "✓ Verified" badge on the profile. If the session
+cookie belongs to an account that no longer exists, the action ends the session and sends the user to /login.
+
+**UI (`src/components/auth/otp-form.tsx`):** 6 digit boxes — auto-advance, backspace/arrow keys, paste a whole
+code (spaces ignored), `autocomplete="one-time-code"` (phones suggest the code), auto-submit on the 6th digit,
+error under the boxes + toast, boxes clear and refocus on a wrong code, "Wrong email? Change it" link. Header and
+footer are hidden on both verify pages (like login/register). Email template: branded code box (`sendOtpEmail`).
+
+**Without SMTP:** dev prints `[email] SMTP not configured — DEV ONLY verification code for … : 123456` in the
+terminal; **production refuses** ("We can't send verification emails right now") → **SMTP env vars are now
+required on Vercel/Netlify** for sign-up. `/api/health` warns when SMTP is missing. Docs: `DEPLOY-VERCEL.md`,
+`.env.example`, `netlify.env.example`.
+
+**Files:** `prisma/schema.prisma`, migration `20261020100000_email_otp` (applied to **local + Neon**),
+`src/lib/otp.ts` (new), `src/lib/session-token.ts` (`verify` kind, `derivedKey`), `src/lib/email.ts`
+(`sendOtpEmail`), `src/app/(store)/auth-actions.ts` (register step 1 + `verifyRegistrationAction`,
+`resendRegistrationCode`, `startEmailVerification`, `verifyEmailAction`, `resendEmailVerification`),
+`src/app/(store)/register/verify/page.tsx`, `src/app/(store)/account/verify-email/page.tsx`,
+`src/app/(store)/account/page.tsx` (banner + badge), `register-form.tsx` (copy, "Continue"),
+`flash-toast.tsx` (`email-verified`, `verify-send-failed`), `conditional-header/footer.tsx`, `api/health`.
+
+**Tested (browser, local):** register → verify page (desktop + mobile 375px) → wrong code (error + 4 left,
+boxes cleared) → right code → account created + "✓ Verified"; used code deleted; existing-account banner →
+code by **paste** → verified; duplicate email (different capitals) blocked; `/register/verify` without a
+pending sign-up → redirects to /register; stale session for deleted account → /login (bug found & fixed).
+eslint + tsc clean (fixed `set-state-in-effect` with the adjust-state-during-render pattern). Test accounts
+removed afterwards.
+
+**⚠️ To do on live:** add SMTP env vars in Vercel (Gmail App Password for the store Gmail) → Redeploy. Until
+then new sign-ups on the live site can't get a code.
+

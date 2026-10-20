@@ -19,6 +19,7 @@ to new deployments, and `NEXT_PUBLIC_*` values are baked in at build time.
 | `NEXT_PUBLIC_SITE_URL` | Your Vercel URL, e.g. `https://zariera.vercel.app` (no trailing slash) |
 | `COURIER_SIMULATION` | `true` for the demo (demo tracking numbers) |
 | socials / email | as in `netlify.env.example` (or set them later in Admin → Settings) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `MAIL_FROM` | **Required for sign-up** — new customers get a 6-digit email code before the account is created. Gmail: `smtp.gmail.com`, `587`, the Gmail address, a 16-char **App Password** (Google Account → Security → 2-Step Verification → App passwords), `ZARIERA <that address>`. Without SMTP, registration on the live site shows "We can't send verification emails right now". |
 | `ANTHROPIC_API_KEY` | (Secret) Claude API key for the AI support chat — console.anthropic.com → API Keys. Without it the chat uses basic answers. |
 
 **Never** paste the local `.env` — its `DATABASE_URL` points to `localhost`, which Vercel can't reach
@@ -26,7 +27,7 @@ to new deployments, and `NEXT_PUBLIC_*` values are baked in at build time.
 
 ## 2. Database (Neon) — already done
 
-The Neon DB already has all tables (8 migrations) and the store data. For a fresh Neon DB:
+The Neon DB already has all tables (9 migrations, incl. `email_otp`) and the store data. For a fresh Neon DB:
 
 ```bash
 DATABASE_URL="DIRECT_NEON_URL" DIRECT_URL="DIRECT_NEON_URL" npx prisma migrate deploy

@@ -6,7 +6,7 @@ import { SiteHeader } from "./site-header";
 
 // Hides the marquee + store header on the auth screens (login / register) so
 // they read as clean, immersive full-screen pages with their own back link.
-const HIDDEN_ON = ["/login", "/register", "/forgot-password", "/reset-password"];
+const HIDDEN_ON = ["/login", "/register", "/register/verify", "/forgot-password", "/reset-password", "/account/verify-email"];
 
 export function ConditionalHeader({ announcements }: { announcements: string[] }) {
   const pathname = usePathname();

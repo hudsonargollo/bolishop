@@ -11,6 +11,8 @@ import { createToken, readToken } from "@/lib/session-token";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { logDbError } from "@/lib/db-errors";
 import { siteUrl } from "@/lib/site";
+import { requireCustomer } from "@/lib/customer-auth";
+import { issueCode, verifyCode, setPending, getPending, clearPending, RESEND_COOLDOWN_S } from "@/lib/otp";
 
 export type AuthState = { error?: string; ok?: boolean; message?: string; values?: Record<string, string> };
 
@@ -37,8 +39,11 @@ export async function registerAction(prev: AuthState, formData: FormData): Promi
   return { ...(await register(prev, formData)), values: keep(formData, ["name", "email"]) };
 }
 
+// Step 1 of sign-up: validate, then email a 6-digit code. The account is only
+// created once the code is confirmed (step 2, verifyRegistrationAction), so
+// nobody can register an email address they don't own.
 async function register(_prev: AuthState, formData: FormData): Promise<AuthState> {
-  if (!rateLimit(`register:${await clientIp()}`, 5, 60 * MINUTE)) return { error: TOO_MANY };
+  if (!rateLimit(`register:${await clientIp()}`, 8, 60 * MINUTE)) return { error: TOO_MANY };
 
   const parsed = registerSchema.safeParse({
     name: formData.get("name"),
@@ -49,25 +54,136 @@ async function register(_prev: AuthState, formData: FormData): Promise<AuthState
 
   const { name, email, password } = parsed.data;
   const e = email.toLowerCase();
+  const payload = { name, passwordHash: hashPassword(password), next: safeNext(formData.get("next")) };
 
-  let created;
   try {
-    created = await prisma.customer.create({
-      data: { name, email: e, passwordHash: hashPassword(password) },
-    });
-  } catch (err) {
-    const kind = logDbError("register", err);
-    if (kind === "duplicate") {
+    if (await prisma.customer.findUnique({ where: { email: e }, select: { id: true } })) {
       return { error: "An account with this email already exists. Please sign in or reset your password." };
     }
+    const sent = await issueCode(e, "register", payload);
+    if (!sent.ok) {
+      if (!sent.retryAfter) return { error: sent.error };
+      // A code was sent moments ago — keep it, but use the latest name/password.
+      await prisma.emailVerification.update({
+        where: { email_purpose: { email: e, purpose: "register" } },
+        data: { payload },
+      });
+    }
+  } catch (err) {
+    const kind = logDbError("register", err);
     if (kind === "unavailable" || kind === "not-migrated" || kind === "engine") {
       return { error: "Service unavailable. Please try again shortly." };
     }
-    return { error: "Could not create your account. Please try again." };
+    return { error: "Could not start sign-up. Please try again." };
   }
 
-  await startCustomerSession({ id: created.id, email: created.email, name: created.name });
-  redirect(withFlash(safeNext(formData.get("next")), "register"));
+  await setPending(e, "register");
+  redirect("/register/verify");
+}
+
+export type OtpState = { ok?: boolean; error?: string; message?: string; retryAfter?: number };
+
+const CODE_MSG = { expired: "Your sign-up session expired. Please start again." };
+
+// Step 2 of sign-up: confirm the code, then create the (verified) account.
+export async function verifyRegistrationAction(_prev: OtpState, formData: FormData): Promise<OtpState> {
+  if (!rateLimit(`otp:${await clientIp()}`, 25, 10 * MINUTE)) return { error: TOO_MANY };
+  const pending = await getPending("register");
+  if (!pending) return { error: CODE_MSG.expired };
+
+  let created;
+  try {
+    const r = await verifyCode(pending.email, "register", String(formData.get("code") ?? ""));
+    if (!r.ok) return { error: r.error };
+    const data = (r.payload ?? {}) as { name?: string; passwordHash?: string; next?: string };
+    if (!data.name || !data.passwordHash) return { error: CODE_MSG.expired };
+    created = await prisma.customer.create({
+      data: { name: data.name, email: pending.email, passwordHash: data.passwordHash, emailVerifiedAt: new Date() },
+    });
+    await clearPending();
+    await startCustomerSession({ id: created.id, email: created.email, name: created.name });
+    redirect(withFlash(safeNext(data.next), "register"));
+  } catch (err) {
+    if (isRedirect(err)) throw err;
+    const kind = logDbError("register-verify", err);
+    if (kind === "duplicate") return { error: "An account with this email already exists. Please sign in." };
+    return { error: "Service unavailable. Please try again shortly." };
+  }
+}
+
+export async function resendRegistrationCode(): Promise<OtpState> {
+  if (!rateLimit(`otp-resend:${await clientIp()}`, 10, 60 * MINUTE)) return { error: TOO_MANY };
+  const pending = await getPending("register");
+  if (!pending) return { error: CODE_MSG.expired };
+  try {
+    const r = await issueCode(pending.email, "register");
+    if (!r.ok) return { error: r.error, retryAfter: r.retryAfter };
+  } catch (err) {
+    logDbError("register-resend", err);
+    return { error: "Service unavailable. Please try again shortly." };
+  }
+  return { ok: true, message: "A new code is on its way.", retryAfter: RESEND_COOLDOWN_S };
+}
+
+// ---------- Existing customers: verify email (accounts made before OTP / at checkout) ----------
+
+export async function startEmailVerification(): Promise<void> {
+  const session = await requireCustomer("/account");
+  const customer = await prisma.customer.findUnique({
+    where: { id: session.id },
+    select: { email: true, emailVerifiedAt: true },
+  });
+  if (!customer) {
+    // Account was removed but the browser still holds its session cookie.
+    await endCustomerSession();
+    redirect("/login");
+  }
+  if (customer.emailVerifiedAt) redirect("/account");
+  const r = await issueCode(customer.email, "verify");
+  if (!r.ok && !r.retryAfter) redirect("/account?flash=verify-send-failed");
+  await setPending(customer.email, "verify");
+  redirect("/account/verify-email");
+}
+
+export async function verifyEmailAction(_prev: OtpState, formData: FormData): Promise<OtpState> {
+  if (!rateLimit(`otp:${await clientIp()}`, 25, 10 * MINUTE)) return { error: TOO_MANY };
+  const session = await requireCustomer("/account");
+  const pending = await getPending("verify");
+  if (!pending || pending.email !== session.email.toLowerCase())
+    return { error: "This verification session expired. Please start again from your account." };
+  try {
+    const r = await verifyCode(pending.email, "verify", String(formData.get("code") ?? ""));
+    if (!r.ok) return { error: r.error };
+    await prisma.customer.update({ where: { id: session.id }, data: { emailVerifiedAt: new Date() } });
+    await clearPending();
+    redirect("/account?flash=email-verified");
+  } catch (err) {
+    if (isRedirect(err)) throw err;
+    logDbError("verify-email", err);
+    return { error: "Service unavailable. Please try again shortly." };
+  }
+}
+
+export async function resendEmailVerification(): Promise<OtpState> {
+  if (!rateLimit(`otp-resend:${await clientIp()}`, 10, 60 * MINUTE)) return { error: TOO_MANY };
+  const session = await requireCustomer("/account");
+  const pending = await getPending("verify");
+  if (!pending || pending.email !== session.email.toLowerCase())
+    return { error: "This verification session expired. Please start again from your account." };
+  try {
+    const r = await issueCode(pending.email, "verify");
+    if (!r.ok) return { error: r.error, retryAfter: r.retryAfter };
+  } catch (err) {
+    logDbError("verify-resend", err);
+    return { error: "Service unavailable. Please try again shortly." };
+  }
+  return { ok: true, message: "A new code is on its way.", retryAfter: RESEND_COOLDOWN_S };
+}
+
+// next/navigation's redirect() works by throwing — let it through our catch blocks.
+function isRedirect(err: unknown): boolean {
+  const digest = (err as { digest?: unknown } | null)?.digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
 }
 
 export async function loginAction(prev: AuthState, formData: FormData): Promise<AuthState> {

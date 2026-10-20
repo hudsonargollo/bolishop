@@ -6,7 +6,7 @@ import type { StoreSettings } from "@/lib/settings-shared";
 
 // Hides the store footer on the auth screens (login / register) so they read
 // as clean full-screen pages.
-const HIDDEN_ON = ["/login", "/register", "/forgot-password", "/reset-password"];
+const HIDDEN_ON = ["/login", "/register", "/register/verify", "/forgot-password", "/reset-password", "/account/verify-email"];
 
 export function ConditionalFooter({ settings }: { settings: StoreSettings }) {
   const pathname = usePathname();

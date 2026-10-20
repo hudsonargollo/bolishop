@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
 import { Emblem } from "@/components/brand/emblem";
-import { logoutAction } from "../auth-actions";
+import { logoutAction, startEmailVerification } from "../auth-actions";
 
 export const metadata: Metadata = {
   title: "My Account",
@@ -49,7 +49,13 @@ async function getMyOrders(customerId: string): Promise<OrderRow[]> {
 
 export default async function AccountPage() {
   const session = await requireCustomer();
-  const orders = await getMyOrders(session.id);
+  const [orders, verified] = await Promise.all([
+    getMyOrders(session.id),
+    prisma.customer
+      .findUnique({ where: { id: session.id }, select: { emailVerifiedAt: true } })
+      .then((c) => Boolean(c?.emailVerifiedAt))
+      .catch(() => true), // DB hiccup: don't nag
+  ]);
   const firstName = session.name.split(" ")[0];
 
   return (
@@ -70,6 +76,22 @@ export default async function AccountPage() {
         </form>
       </div>
 
+      {!verified && (
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gold/50 bg-gold/10 px-5 py-4">
+          <div>
+            <p className="font-medium text-ink">Please verify your email</p>
+            <p className="text-sm text-muted">
+              We&apos;ll send a 6-digit code to {session.email} to confirm it&apos;s yours.
+            </p>
+          </div>
+          <form action={startEmailVerification}>
+            <button className="rounded-full bg-maroon px-5 py-2.5 text-sm font-medium text-light transition hover:bg-maroon-2">
+              Verify email
+            </button>
+          </form>
+        </div>
+      )}
+
       <div className="mt-10 grid gap-6 md:grid-cols-[260px_1fr]">
         {/* Profile */}
         <aside className="h-fit rounded-xl border border-[var(--line)] bg-cream-soft p-6">
@@ -81,7 +103,14 @@ export default async function AccountPage() {
             </div>
             <div>
               <dt className="text-muted">Email</dt>
-              <dd className="break-all text-ink">{session.email}</dd>
+              <dd className="break-all text-ink">
+                {session.email}
+                {verified && (
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                    ✓ Verified
+                  </span>
+                )}
+              </dd>
             </div>
           </dl>
           <Link
