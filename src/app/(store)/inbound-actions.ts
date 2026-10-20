@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit, TOO_MANY } from "@/lib/rate-limit";
 import { sendContactNotification } from "@/lib/email";
+import { PIECE_TYPES, FINISHES, BUDGETS } from "@/lib/custom-request";
 
 export type InboundState = { ok?: boolean; error?: string; values?: Record<string, string> };
 
@@ -60,6 +61,54 @@ async function saveContact(_prev: InboundState, formData: FormData): Promise<Inb
   }
 
   await sendContactNotification(d);
+  return { ok: true };
+}
+
+// ---------- Custom design request (Custom page) ----------
+// Saved as a ContactMessage with topic "custom" so it shows in Admin → Messages.
+
+const customSchema = z.object({
+  name: z.string().trim().min(2, "Please enter your name").max(120),
+  email: z.string().trim().email("Enter a valid email").max(200),
+  phone: z.string().trim().min(7, "Enter a phone / WhatsApp number so we can discuss your design").max(30),
+  pieceType: z.enum(PIECE_TYPES, { message: "Choose what you'd like us to make" }),
+  finish: z.enum(FINISHES, { message: "Choose a finish" }),
+  budget: z.enum(BUDGETS, { message: "Choose a budget" }),
+  neededBy: z.string().trim().max(60).optional(),
+  details: z.string().trim().min(10, "Tell us a little about your design (at least a sentence)").max(3000),
+});
+
+const CUSTOM_FIELDS = ["name", "email", "phone", "pieceType", "finish", "budget", "neededBy", "details"];
+
+export async function sendCustomRequest(_prev: InboundState, formData: FormData): Promise<InboundState> {
+  const values = Object.fromEntries(CUSTOM_FIELDS.map((k) => [k, String(formData.get(k) ?? "")]));
+  if (String(formData.get("website") ?? "")) return { ok: true }; // honeypot
+  if (!rateLimit(`custom:${await clientIp()}`, 5, 30 * 60_000)) return { error: TOO_MANY, values };
+
+  const parsed = customSchema.safeParse({ ...values, neededBy: values.neededBy || undefined });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message, values };
+  const d = parsed.data;
+
+  const subject = `Custom design: ${d.pieceType}`;
+  const message = [
+    `Piece: ${d.pieceType}`,
+    `Finish: ${d.finish}`,
+    `Budget: ${d.budget}`,
+    `Needed by: ${d.neededBy || "Flexible"}`,
+    "",
+    d.details,
+  ].join("\n");
+
+  try {
+    await prisma.contactMessage.create({
+      data: { name: d.name, email: d.email.toLowerCase(), phone: d.phone, subject, message, topic: "custom" },
+    });
+  } catch (err) {
+    console.error("[custom] could not save request:", err);
+    return { error: "We couldn't send your request right now. Please try again shortly.", values };
+  }
+
+  await sendContactNotification({ name: d.name, email: d.email, phone: d.phone, subject, message, topic: "custom" });
   return { ok: true };
 }
 

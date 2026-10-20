@@ -22,6 +22,7 @@ export function ProductForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
+  const v = state.values; // what the admin typed, kept after a failed save
   const toast = useToast();
 
   useEffect(() => {
@@ -31,33 +32,33 @@ export function ProductForm({
   return (
     <form action={formAction} className="max-w-2xl space-y-5">
       <Row label="Name" required>
-        <input name="name" required defaultValue={product?.name} className={input} />
+        <input name="name" required defaultValue={v?.name ?? product?.name} className={input} />
       </Row>
       <Row label="Slug" hint="Leave blank to auto-generate from the name">
-        <input name="slug" defaultValue={product?.slug} className={input} placeholder="auto" />
+        <input name="slug" defaultValue={v?.slug ?? product?.slug} className={input} placeholder="auto" />
       </Row>
       <Row label="Description">
-        <textarea name="description" rows={4} defaultValue={product?.description ?? ""} className={input} />
+        <textarea name="description" rows={4} defaultValue={v?.description ?? product?.description ?? ""} className={input} />
       </Row>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Row label="Price (Rs)" required>
-          <input name="price" type="number" min="0" step="1" required defaultValue={product?.price} className={input} />
+          <input name="price" type="number" min="0" step="1" required defaultValue={v?.price ?? product?.price} className={input} />
         </Row>
         <Row label="Compare-at price (Rs)" hint="Optional — shows a strikethrough">
-          <input name="compareAtPrice" type="number" min="0" step="1" defaultValue={product?.compareAtPrice ?? ""} className={input} />
+          <input name="compareAtPrice" type="number" min="0" step="1" defaultValue={v?.compareAtPrice ?? product?.compareAtPrice ?? ""} className={input} />
         </Row>
         <Row label="Stock" required>
-          <input name="stock" type="number" min="0" step="1" required defaultValue={product?.stock ?? 0} className={input} />
+          <input name="stock" type="number" min="0" step="1" required defaultValue={v?.stock ?? product?.stock ?? 0} className={input} />
         </Row>
         <Row label="SKU">
-          <input name="sku" defaultValue={product?.sku ?? ""} className={input} />
+          <input name="sku" defaultValue={v?.sku ?? product?.sku ?? ""} className={input} />
         </Row>
         <Row label="Material">
-          <input name="material" defaultValue={product?.material ?? ""} className={input} placeholder="e.g. Gold-Plated Steel" />
+          <input name="material" defaultValue={v?.material ?? product?.material ?? ""} className={input} placeholder="e.g. Gold-Plated Steel" />
         </Row>
         <Row label="Category" required>
-          <select name="categoryId" required defaultValue={product?.categoryId ?? ""} className={input}>
+          <select key={v?.categoryId ?? "init"} name="categoryId" required defaultValue={v?.categoryId ?? product?.categoryId ?? ""} className={input}>
             <option value="" disabled>
               Choose a category
             </option>
@@ -77,7 +78,7 @@ export function ProductForm({
         <textarea
           name="specs"
           rows={6}
-          defaultValue={product?.specs ?? ""}
+          defaultValue={v?.specs ?? product?.specs ?? ""}
           className={input}
           placeholder={`Metal type: Sterling Silver\nFinish: 18K Gold-plated\nStone: Cubic Zirconia\nClasp: Lobster clasp\nSize: Adjustable, 7"+2"\nWeight: 12 g`}
         />
@@ -89,11 +90,11 @@ export function ProductForm({
 
       <div className="flex gap-6">
         <label className="flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" name="featured" defaultChecked={product?.featured} className="accent-[var(--color-gold-deep)]" />
+          <input type="checkbox" name="featured" defaultChecked={v ? v.featured === "on" : product?.featured} className="accent-[var(--color-gold-deep)]" />
           Featured
         </label>
         <label className="flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" name="active" defaultChecked={product?.active ?? true} className="accent-[var(--color-gold-deep)]" />
+          <input type="checkbox" name="active" defaultChecked={v ? v.active === "on" : product?.active ?? true} className="accent-[var(--color-gold-deep)]" />
           Active (visible in store)
         </label>
       </div>

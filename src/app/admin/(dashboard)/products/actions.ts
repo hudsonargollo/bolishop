@@ -7,7 +7,14 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { slugify } from "@/lib/slug";
 
-export type ProductFormState = { error?: string };
+export type ProductFormState = { error?: string; values?: Record<string, string> };
+
+// Echoed back on errors: React 19 resets the form after the action, so without
+// this the admin would lose everything they typed.
+const FIELDS = ["name", "slug", "description", "price", "compareAtPrice", "stock", "sku", "material", "specs", "categoryId", "featured", "active"];
+function keep(fd: FormData): Record<string, string> {
+  return Object.fromEntries(FIELDS.map((k) => [k, String(fd.get(k) ?? "")]));
+}
 
 const schema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -70,12 +77,12 @@ export async function createProduct(
 ): Promise<ProductFormState> {
   await requireAdmin();
   const parsed = parse(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message, values: keep(formData) };
 
   try {
     await prisma.product.create({ data: toData(parsed.data) });
   } catch (err) {
-    return { error: dbError(err) };
+    return { error: dbError(err), values: keep(formData) };
   }
   revalidatePath("/admin/products");
   revalidatePath("/", "layout"); // storefront (home is cached 5 min) sees the change now
@@ -89,12 +96,12 @@ export async function updateProduct(
 ): Promise<ProductFormState> {
   await requireAdmin();
   const parsed = parse(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message, values: keep(formData) };
 
   try {
     await prisma.product.update({ where: { id }, data: toData(parsed.data) });
   } catch (err) {
-    return { error: dbError(err) };
+    return { error: dbError(err), values: keep(formData) };
   }
   revalidatePath("/admin/products");
   revalidatePath("/", "layout"); // storefront (home is cached 5 min) sees the change now

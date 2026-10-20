@@ -30,7 +30,7 @@ export const sampleProducts: ProductView[] = [
     name: "Seraphine Solitaire Ring",
     slug: "seraphine-solitaire-ring",
     description:
-      "Timeless solitaire ring in polished silver-tone stainless steel with a brilliant cubic zirconia — an everyday favourite that never tarnishes.",
+      "Timeless solitaire ring in polished silver-tone stainless steel with a brilliant cubic zirconia — an everyday favorite that never tarnishes.",
     price: 62000,
     compareAtPrice: null,
     material: "Silver-Tone Steel",

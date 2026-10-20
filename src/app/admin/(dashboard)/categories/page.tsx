@@ -14,7 +14,7 @@ export default async function AdminCategoriesPage() {
   return (
     <div>
       <h1 className="font-serif text-3xl font-bold text-ink">Categories</h1>
-      <p className="mt-1 text-sm text-muted">Organise your catalogue — add new collections here.</p>
+      <p className="mt-1 text-sm text-muted">Organize your catalog — add new collections here.</p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
         {/* List */}

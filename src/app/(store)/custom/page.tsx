@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { OrnateFrame } from "@/components/ornate-frame";
 import { Emblem } from "@/components/brand/emblem";
+import { CustomDesignForm } from "@/components/custom-design-form";
+import { getStoreSettings } from "@/lib/settings";
+import { whatsappUrl } from "@/lib/settings-shared";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/custom" },
@@ -15,7 +17,8 @@ const STEPS = [
   { n: "3", title: "Handcrafted for you", body: "Your one-of-a-kind piece is made and delivered." },
 ];
 
-export default function CustomPage() {
+export default async function CustomPage() {
+  const settings = await getStoreSettings();
   return (
     <div className="bg-cream px-5 py-12">
       <OrnateFrame className="mx-auto max-w-4xl bg-panel">
@@ -30,12 +33,13 @@ export default function CustomPage() {
             idea to life in premium stainless steel. Share your design and we&apos;ll craft
             something uniquely yours.
           </p>
-          <Link
-            href="/contact?topic=custom"
+          {/* Jumps to the design request form further down this page */}
+          <a
+            href="#design-request"
             className="mt-9 inline-block rounded-full bg-maroon px-9 py-3.5 text-sm font-medium uppercase tracking-[0.12em] text-light transition hover:bg-maroon-2"
           >
             Start Your Design
-          </Link>
+          </a>
         </div>
       </OrnateFrame>
 
@@ -52,6 +56,24 @@ export default function CustomPage() {
             <p className="mt-2 text-sm text-muted">{s.body}</p>
           </div>
         ))}
+      </section>
+
+      {/* Design request form */}
+      <section
+        id="design-request"
+        className="mx-auto mt-14 max-w-4xl scroll-mt-28 rounded-2xl border border-[var(--line)] bg-cream-soft p-6 sm:p-10"
+      >
+        <div className="text-center">
+          <span className="eyebrow">Step 1</span>
+          <h2 className="mt-2 font-serif text-3xl font-semibold text-ink">Tell us about your piece</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-muted">
+            Fill in what you can — we&apos;ll get back to you within 1–2 working days with design ideas and a
+            price.
+          </p>
+        </div>
+        <div className="mt-8">
+          <CustomDesignForm whatsappUrl={whatsappUrl(settings) || undefined} />
+        </div>
       </section>
     </div>
   );

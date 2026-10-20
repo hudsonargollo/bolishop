@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Netlify local build output
 /.netlify/
+
+# Playwright MCP scratch output
+/.playwright-mcp/

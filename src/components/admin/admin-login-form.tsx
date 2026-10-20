@@ -34,7 +34,7 @@ export function AdminLoginForm() {
       <form action={formAction} className="mt-7 space-y-4">
         <div>
           <label className={label}>Email</label>
-          <input name="email" type="email" required autoComplete="username" placeholder="admin@zariera.com" defaultValue={state.values?.email} className={input} />
+          <input name="email" type="email" required autoComplete="username" placeholder="you@example.com" defaultValue={state.values?.email} className={input} />
         </div>
         <div>
           <label className={label}>Password</label>
@@ -51,7 +51,7 @@ export function AdminLoginForm() {
       </form>
 
       <p className="mt-6 text-center text-xs text-muted">
-        Authorised personnel only · ZARIERA
+        Authorized staff only · ZARIERA
       </p>
     </AuthShell>
   );

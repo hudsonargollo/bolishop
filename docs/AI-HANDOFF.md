@@ -659,3 +659,30 @@ falls back to env defaults, `saveStoreSettings`, `renderAnnouncements`), `src/li
 - Mistake noted: ran `next typegen` while `next dev` was running → corrupted `.next/dev/types`; fixed by
   stopping dev and deleting `.next`. Rule stands: never build/typegen while dev runs.
 - tsc/eslint clean. Dev server restarted (local DB).
+
+### 2026-10-20 — Client-reported mistakes + self-QA pass (Claude)
+**Reported by user**
+1. Admin login: "Authorised personnel only" (British spelling on an American-English site) and the email
+   box placeholder showed the real admin email `admin@zariera.com` (tells attackers which account to target).
+   → now "Authorized staff only · ZARIERA", placeholder `you@example.com`.
+2. Custom page "Start Your Design" jumped to the generic Contact page. → Custom page now has its own
+   **design request form** (`src/components/custom-design-form.tsx`, section `#design-request`); the button
+   scrolls to it. Fields: name, email, phone/WhatsApp, piece type, finish, budget (options in
+   `src/lib/custom-request.ts`), needed-by, description; honeypot + rate limit. Server action
+   `sendCustomRequest` saves a ContactMessage (topic `custom`, subject "Custom design: <piece>") → shows in
+   Admin → Messages with the CUSTOM tag; owner email alert if SMTP is set. Success state + WhatsApp hint for
+   reference photos.
+
+**Found in my own QA pass**
+- British spellings → American: "favourite" (shop + sample data), "Organise your catalogue" (admin
+  categories), "centre" in 3 product descriptions (local DB, **live Neon DB** and `import-products.ts`).
+- `<select>` values were lost after a validation error (select reads defaultValue only on mount) → keyed
+  selects in custom form + admin team role.
+- **Admin product form lost everything typed after a failed save** (e.g. duplicate slug) → actions return
+  `values`, form refills all fields, category select and checkboxes.
+- Shop price filter button "Go" → "Apply". 404 page title "Page not found"; search title "Search: <q>";
+  admin dashboard title "Dashboard · ZARIERA Admin" (layout template doesn't apply to the segment's own page).
+- `.playwright-mcp/` added to `.gitignore`.
+- Link/button audit (all storefront pages): every internal link 200/expected redirect, every #anchor exists,
+  no placeholder/test words in visible text, all pages titled. Custom form verified desktop + mobile (no
+  horizontal overflow), error keeps all values, valid submit → Messages. Test data deleted.

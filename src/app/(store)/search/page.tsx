@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import { getProducts } from "@/lib/catalog";
 import { ProductGrid } from "@/components/product-grid";
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: true },
-  title: "Search",
-  description: "Search the ZARIERA collection.",
-};
+export async function generateMetadata({ searchParams }: PageProps<"/search">): Promise<Metadata> {
+  const sp = await searchParams;
+  const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q)?.trim().slice(0, 60);
+  return {
+    robots: { index: false, follow: true },
+    title: q ? `Search: ${q}` : "Search",
+    description: "Search the ZARIERA collection.",
+  };
+}
 
 export default async function SearchPage({ searchParams }: PageProps<"/search">) {
   const sp = await searchParams;

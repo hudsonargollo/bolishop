@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Emblem } from "@/components/brand/emblem";
 
+export const metadata = { title: "Page not found", robots: { index: false } };
+
 export default function NotFound() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-5 py-20 text-center">

@@ -286,7 +286,7 @@ export function AddTeamMemberForm() {
             <label htmlFor="set-role" className={labelCls}>
               Role
             </label>
-            <select id="set-role" name="role" defaultValue={s.ok ? "STAFF" : s.values?.role ?? "STAFF"} className={input}>
+            <select key={s.ok ? "reset" : s.values?.role ?? "STAFF"} id="set-role" name="role" defaultValue={s.ok ? "STAFF" : s.values?.role ?? "STAFF"} className={input}>
               <option value="STAFF">Staff</option>
               <option value="ADMIN">Admin</option>
             </select>

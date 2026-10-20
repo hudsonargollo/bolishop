@@ -123,7 +123,7 @@ export function ShopFilters({ materials, showSort = true }: Props) {
             type="submit"
             className="rounded-md bg-maroon px-3 py-2 text-xs font-medium text-gold transition hover:opacity-90"
           >
-            Go
+            Apply
           </button>
         </form>
       </div>

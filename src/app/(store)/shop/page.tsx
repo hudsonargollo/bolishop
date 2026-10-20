@@ -21,7 +21,7 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
     <ShopBrowser
       eyebrow="The Collection"
       title="All Jewelry"
-      description="Premium stainless steel & gold-plated pieces — rust-free and made to last. Filter by material or price to find your next favourite."
+      description="Premium stainless steel & gold-plated pieces — rust-free and made to last. Filter by material or price to find your next favorite."
       products={products}
       materials={materials}
     />

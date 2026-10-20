@@ -5,7 +5,7 @@ import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { StatusBadge } from "@/components/status-badge";
 
-export const metadata = { title: "Dashboard" };
+export const metadata = { title: { absolute: "Dashboard · ZARIERA Admin" } };
 
 export const dynamic = "force-dynamic";
 

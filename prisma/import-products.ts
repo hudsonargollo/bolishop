@@ -57,7 +57,7 @@ const PRODUCTS: P[] = [
     featured: false,
     image: "/images/products/nora-bow-bracelet.jpg",
     description:
-      "A sleek snake chain tied with a delicate centre bow — a soft, romantic touch that sits flat and elegant on the wrist. Adjustable length with a lobster clasp." +
+      "A sleek snake chain tied with a delicate center bow — a soft, romantic touch that sits flat and elegant on the wrist. Adjustable length with a lobster clasp." +
       CARE,
   },
   {
@@ -71,7 +71,7 @@ const PRODUCTS: P[] = [
     featured: true,
     image: "/images/products/reine-medallion-bangle.jpg",
     description:
-      "A double beaded bangle centred with a pavé cubic-zirconia medallion — a statement of quiet luxury with a secure hinged closure for easy wear." +
+      "A double beaded bangle centerd with a pavé cubic-zirconia medallion — a statement of quiet luxury with a secure hinged closure for easy wear." +
       CARE,
   },
   {
@@ -124,7 +124,7 @@ const PRODUCTS: P[] = [
     featured: true,
     image: "/images/products/catena-pave-bangle.jpg",
     description:
-      "A striking bangle with a raised chain-link centre lit up in sparkling pavé cubic zirconia — high-shine glamour with a secure hinged clasp." +
+      "A striking bangle with a raised chain-link center lit up in sparkling pavé cubic zirconia — high-shine glamour with a secure hinged clasp." +
       CARE,
   },
   {
