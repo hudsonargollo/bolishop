@@ -19,6 +19,7 @@ to new deployments, and `NEXT_PUBLIC_*` values are baked in at build time.
 | `NEXT_PUBLIC_SITE_URL` | Your Vercel URL, e.g. `https://zariera.vercel.app` (no trailing slash) |
 | `COURIER_SIMULATION` | `true` for the demo (demo tracking numbers) |
 | socials / email | as in `netlify.env.example` (or set them later in Admin → Settings) |
+| `ANTHROPIC_API_KEY` | (Secret) Claude API key for the AI support chat — console.anthropic.com → API Keys. Without it the chat uses basic answers. |
 
 **Never** paste the local `.env` — its `DATABASE_URL` points to `localhost`, which Vercel can't reach
 (that causes "Could not create your account").

@@ -1,9 +1,39 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 import { type StoreSettings, whatsappUrl } from "@/lib/settings-shared";
 
+
+const LINK_RE = /(https?:\/\/[^\s)]+|(?<![\w/])\/(?:product|shop|account|custom|contact|shipping|care|faq|about|cart|checkout|search|login|register)[a-z0-9\-/?=&%.]*)/gi;
+
+function linkify(text: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(LINK_RE)) {
+    const raw = m[0].replace(/[.,;:!?]+$/, "");
+    const start = m.index ?? 0;
+    if (start > last) out.push(text.slice(last, start));
+    const cls = "font-medium text-gold-deep underline underline-offset-2 break-all hover:text-gold";
+    out.push(
+      raw.startsWith("/") ? (
+        <Link key={start} href={raw} className={cls}>
+          {raw}
+        </Link>
+      ) : (
+        <a key={start} href={raw} target="_blank" rel="noopener noreferrer" className={cls}>
+          {raw.replace(/^https?:\/\/(www\.)?/, "")}
+        </a>
+      )
+    );
+    last = start + raw.length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+const STORAGE_KEY = "zariera-chat-v1";
 
 type Faq = { id: string; label: string; answer: string; keywords: string[] };
 
@@ -68,17 +98,41 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
   const CONTACT = settings.contact;
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [msgs, setMsgs] = useState<Msg[]>([
-    {
-      from: "bot",
-      text: "Hi! 👋 Welcome to ZARIERA. How can we help today? Pick a topic below, or type your question.",
-    },
-  ]);
+  const greeting: Msg = {
+    from: "bot",
+    text: "Hi! 👋 I'm the ZARIERA assistant. Ask me anything — products, prices, delivery, payment, returns or your order. You can write in English or Urdu.",
+  };
+  const [msgs, setMsgs] = useState<Msg[]>([greeting]);
+  const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const restored = useRef(false);
+
+  // Keep the conversation while the shopper browses (this tab only): restored
+  // the first time the chat is opened, saved on every change after that.
+  const toggleOpen = () => {
+    if (!open && !restored.current) {
+      restored.current = true;
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "null");
+        if (Array.isArray(saved) && saved.length) setMsgs(saved as Msg[]);
+      } catch {
+        /* ignore */
+      }
+    }
+    setOpen((o) => !o);
+  };
+  useEffect(() => {
+    if (!restored.current) return;
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(msgs.slice(-30)));
+    } catch {
+      /* ignore */
+    }
+  }, [msgs]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [msgs, open]);
+  }, [msgs, open, typing]);
 
   const answer = (faq: Faq) => {
     setMsgs((m) => [
@@ -88,11 +142,7 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
     ]);
   };
 
-  const send = () => {
-    const q = input.trim();
-    if (!q) return;
-    setInput("");
-    setMsgs((m) => [...m, { from: "user", text: q }]);
+  const localAnswer = (q: string): string => {
     const lower = q.toLowerCase();
     let hit: Faq | undefined;
     let bestScore = 0;
@@ -103,19 +153,36 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
         hit = f;
       }
     }
-    setTimeout(() => {
-      setMsgs((m) => [
-        ...m,
-        hit
-          ? { from: "bot", text: hit.answer }
-          : {
-              from: "bot",
-              text: HAS_WHATSAPP
-                ? "Great question! For anything specific, our team will help you personally on WhatsApp — just tap the green button below. 💬"
-                : "Great question! For anything specific, send us a message from our Contact page and our team will get back to you. 💬",
-            },
-      ]);
-    }, 350);
+    return (
+      hit?.answer ??
+      (HAS_WHATSAPP
+        ? "I couldn't reach the assistant just now. Our team will help you personally on WhatsApp — tap the green button below. 💬"
+        : "I couldn't reach the assistant just now. Please send us a message from our Contact page and our team will get back to you. 💬")
+    );
+  };
+
+  const send = async () => {
+    const q = input.trim().slice(0, 600);
+    if (!q || typing) return;
+    setInput("");
+    const next: Msg[] = [...msgs, { from: "user", text: q }];
+    setMsgs(next);
+    setTyping(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: next.slice(-12).map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text })),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { reply?: string };
+      setMsgs((m) => [...m, { from: "bot", text: data.reply || localAnswer(q) }]);
+    } catch {
+      setMsgs((m) => [...m, { from: "bot", text: localAnswer(q) }]);
+    } finally {
+      setTyping(false);
+    }
   };
 
   return (
@@ -129,7 +196,7 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
           </span>
         )}
         <button
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggleOpen}
           aria-label={open ? "Close chat" : "Chat with us"}
           className={`relative flex h-12 w-12 items-center justify-center rounded-full sm:h-14 sm:w-14 bg-gradient-to-br from-gold-hi via-gold to-gold-deep text-maroon shadow-[0_16px_40px_-12px_rgba(169,126,48,0.75)] ring-1 ring-[rgba(230,205,139,0.6)] transition-transform duration-300 hover:scale-110 active:scale-95 ${
             open ? "" : "animate-chatpulse"
@@ -175,7 +242,7 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
                 <p className="font-serif text-lg font-semibold leading-tight">ZARIERA Support</p>
                 <p className="mt-0.5 flex items-center gap-1.5 text-xs text-light/75">
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                  Quick answers · team replies {CONTACT.hours}
+                  Instant answers 24/7 · team replies {CONTACT.hours}
                 </p>
               </div>
               <button
@@ -211,10 +278,36 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
                       : "rounded-bl-md border border-[var(--line)] bg-surface text-ink"
                   }`}
                 >
-                  {m.text}
+                  {m.from === "bot" ? (
+                    <span className="whitespace-pre-line">
+                      {linkify(m.text).map((part, j) => (
+                        <Fragment key={j}>{part}</Fragment>
+                      ))}
+                    </span>
+                  ) : (
+                    m.text
+                  )}
                 </div>
               </div>
             ))}
+
+            {typing && (
+              <div className="flex justify-start" aria-live="polite">
+                <span className="mr-2 mt-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-maroon to-wine-deep text-[0.6rem] text-gold">
+                  Z
+                </span>
+                <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-[var(--line)] bg-surface px-3.5 py-3">
+                  <span className="sr-only">Assistant is typing</span>
+                  {[0, 1, 2].map((d) => (
+                    <span
+                      key={d}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-gold-deep"
+                      style={{ animationDelay: `${d * 150}ms` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quick replies */}
             <div className="pt-1.5">
@@ -252,20 +345,21 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              send();
+              void send();
             }}
             className="flex items-center gap-2 border-t border-[var(--line)] bg-surface px-3 py-2.5"
           >
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your question…"
+              placeholder="Ask anything… (English / اردو)"
+              maxLength={600}
               className="min-w-0 flex-1 rounded-full border border-[var(--line-strong)] bg-cream-soft px-4 py-2.5 text-sm text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.22)]"
             />
             <button
               type="submit"
               aria-label="Send"
-              disabled={!input.trim()}
+              disabled={!input.trim() || typing}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold-hi to-gold-deep text-maroon shadow-sm transition hover:opacity-90 disabled:opacity-40"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -691,3 +691,37 @@ falls back to env defaults, `saveStoreSettings`, `renderAnnouncements`), `src/li
 - User: "Start Your Design" sounds like a design tool opens, but it leads to a form. Changed to
   **"Request a Custom Piece"** with a hint below: "Fill a short form — takes 2 minutes, no payment needed."
   (`src/app/(store)/custom/page.tsx`). Verified in the browser; tsc/eslint clean.
+
+### 2026-10-20 — AI support chat (Claude) (Claude)
+- **Request:** the chat bubble gave the same answer to everything (it was a fixed keyword FAQ). User wants a
+  real assistant that answers any customer question when the owner isn't available.
+- **Server:** `src/lib/ai-assistant.ts` + `POST /api/chat` (`GET /api/chat` → `{ai: true|false}`).
+  - **AI mode** (when `ANTHROPIC_API_KEY` is set): official `@anthropic-ai/sdk` (0.135), model
+    `claude-opus-5-5` (override with `CHAT_MODEL`), `output_config.effort: "low"` (chat), server-side refusal
+    fallbacks (`betas: ["server-side-fallback-2026-07-01"]`, `fallbacks: "default"`), `stop_reason: "refusal"`
+    handled. System prompt = fixed instructions + live store knowledge (all active products with price / sale /
+    stock / material / link, categories incl. "coming soon", shipping fee + free threshold + delivery time from
+    Settings, COD, 7-day returns, care, custom orders, contact) with a cache breakpoint.
+    Tool `track_order` (strict schema; needs order number AND checkout email — same rule as /account/orders).
+    Manual tool loop (≤3 rounds) appends `response.content` unchanged; earlier turns come from the browser as
+    plain text only (no thinking blocks replayed, so preserved-thinking checks don't apply).
+    Guardrails in the prompt: answer only from store data, reply in the customer's language (English / Urdu /
+    Roman Urdu), never invent prices/discounts/dates, never take card/OTP/passwords, ignore prompt-injection,
+    hand off to WhatsApp / contact page when unsure. Typed SDK errors → falls back to basic mode.
+  - **Basic mode** (no key, or API error): rewritten keyword intents (tracking, payment/COD before shipping,
+    returns, custom, shipping, care, size, contact, sale items) + **real product search** (best-score matches,
+    "under Rs X" price filter, single-match answer with price/stock/link) + "coming soon" for empty categories.
+  - Rate limit 20 messages / 10 min per IP; ≤12 turns, ≤600 chars per message; `maxDuration = 30`.
+- **UI (`src/components/support-chat.tsx`):** typed questions go to /api/chat with a typing indicator; product
+  and page paths in replies become links (`/product/...`, `/shop/...`, full URLs); conversation kept in
+  sessionStorage (`zariera-chat-v1`, restored when the chat is opened); quick-reply chips stay instant; local
+  fallback if the request fails.
+- **Bugs found while testing & fixed:** "cash on delivery" answered as shipping (check order); product question
+  listed 4 items instead of the match; Python edit wrote literal backspace chars instead of `\b` in regexes
+  (greeting never matched) → function rewritten, file checked for `\x08`; "earrings?" now says coming soon.
+- **Verified:** 12 + 9 question API runs (basic mode — no API key on this PC), browser: ask → answer with link →
+  click → product page, chat still open; reload → conversation restored. `VERCEL=1 next build` ✓, tsc/eslint clean.
+- **To activate AI mode:** add `ANTHROPIC_API_KEY` (Secret) in Vercel/Netlify env + local `.env`, redeploy.
+  **Not yet tested against the live API** (no key available here). Cost: per message, Claude Opus 5.5 rates
+  ($4 / $20 per MTok, cached prompt reads $0.20); switch with `CHAT_MODEL` if needed.
+- Env templates updated: `.env.example`, `netlify.env.example`, `docs/DEPLOY-VERCEL.md`.
