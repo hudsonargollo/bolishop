@@ -806,3 +806,7 @@ auto-deploys with the new env vars.
 - After push (`1ccbac9`), ~8 min later the live site still served the old build (`/register/verify` → 404,
   health without the SMTP check). GitHub status not readable (private repo, `gh` not logged in) → owner asked
   to check Vercel → Deployments (building / error / not triggered) and Redeploy the latest commit.
+- Owner redeployed → live now on the OTP build (`/register/verify` → 307 redirect, `/api/health` has no SMTP
+  warning; only the Blob-store warning remains). Live sign-up test is left to the owner (the AI doesn't enter
+  passwords / create accounts on the production site); steps sent: register with a real Gmail → code from
+  jewelryzariera@gmail.com → verify → "✓ Verified". If it fails: screenshot + Vercel Logs search `[email]`.
