@@ -803,3 +803,6 @@ displays App Passwords as "abcd efgh ijkl mnop"; Vercel value was pasted with sp
 `CONTACT_EMAIL` (owner dropped the `NEXT_PUBLIC_` prefix because of a Sensitive warning) — unused by the code;
 the contact email comes from the DB setting saved earlier, so it can be deleted. Pushed OTP + this fix → Vercel
 auto-deploys with the new env vars.
+- After push (`1ccbac9`), ~8 min later the live site still served the old build (`/register/verify` → 404,
+  health without the SMTP check). GitHub status not readable (private repo, `gh` not logged in) → owner asked
+  to check Vercel → Deployments (building / error / not triggered) and Redeploy the latest commit.
