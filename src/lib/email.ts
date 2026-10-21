@@ -37,7 +37,10 @@ function getTransport() {
     secure: process.env.SMTP_SECURE === "true", // true for port 465
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      // Google shows App Passwords as "abcd efgh ijkl mnop"; the real password has no spaces.
+      pass: /gmail|googlemail/i.test(process.env.SMTP_HOST ?? "")
+        ? process.env.SMTP_PASS?.replace(/\s+/g, "")
+        : process.env.SMTP_PASS,
     },
   });
 }

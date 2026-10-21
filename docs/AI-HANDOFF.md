@@ -779,3 +779,27 @@ removed afterwards.
 **⚠️ To do on live:** add SMTP env vars in Vercel (Gmail App Password for the store Gmail) → Redeploy. Until
 then new sign-ups on the live site can't get a code.
 
+
+**2026-10-20 (follow-up):** User tested sign-up locally with a real Gmail, no email arrived. Cause: the local
+`.env` had **no SMTP settings**, so the code was only printed in the dev terminal ("DEV ONLY verification code").
+Added empty SMTP placeholders to the local `.env` (`SMTP_HOST=smtp.gmail.com`, port 587, `SMTP_USER`,
+`SMTP_PASS`, `MAIL_FROM` blank). User must fill in the store Gmail and its App Password, then restart dev.
+Same values are needed on Vercel. Not pushed yet (commit `fec3707` is local only).
+
+**2026-10-21 — Store Gmail changed to `jewelryzariera@gmail.com`** (old: zariera.jewelry@gmail.com).
+- Saved as `contact.email` in the `Setting "store"` row on **local + Neon** (live site shows it immediately;
+  Neon socials kept). Local `.env`: `NEXT_PUBLIC_CONTACT_EMAIL`, `SMTP_USER`, `MAIL_FROM` set to it;
+  `netlify.env.example` updated.
+- `SMTP_PASS` (Gmail App Password) is **left blank on purpose**: the AI doesn't write real account passwords.
+  The owner pastes it into local `.env` and into Vercel env vars. The App Password was posted in chat once,
+  so the owner was advised to delete it in Google → App passwords and make a new one.
+- Vercel still needs: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`,
+  and optionally `NEXT_PUBLIC_CONTACT_EMAIL` → Redeploy. OTP commit `fec3707` still not pushed.
+
+**2026-10-21 — SMTP live test:** owner added the Gmail App Password (new one) to local `.env` and Vercel
+(Production). `nodemailer.verify()` → login OK for jewelryzariera@gmail.com; local sign-up sent a real code email
+(no "DEV ONLY" log line). `src/lib/email.ts` now strips spaces from `SMTP_PASS` when the host is Gmail (Google
+displays App Passwords as "abcd efgh ijkl mnop"; Vercel value was pasted with spaces). Vercel has a key
+`CONTACT_EMAIL` (owner dropped the `NEXT_PUBLIC_` prefix because of a Sensitive warning) — unused by the code;
+the contact email comes from the DB setting saved earlier, so it can be deleted. Pushed OTP + this fix → Vercel
+auto-deploys with the new env vars.
