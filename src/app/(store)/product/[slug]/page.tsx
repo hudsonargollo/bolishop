@@ -10,6 +10,7 @@ import { AddToCart } from "@/components/cart/add-to-cart";
 import { JsonLd } from "@/components/json-ld";
 
 import { siteUrl } from "@/lib/site";
+import { AccordionItem } from "@/components/ui/accordion-item";
 
 export async function generateMetadata({
   params,
@@ -310,19 +311,23 @@ function Accordion({
   children: React.ReactNode;
 }) {
   return (
-    // Same `name` on every section = exclusive accordion: opening one closes the others.
-    <details name="product-details" open={open} className="group">
-      <summary className="flex cursor-pointer list-none items-center justify-between py-4 font-serif text-lg font-semibold text-ink [&::-webkit-details-marker]:hidden">
-        {title}
+    <AccordionItem
+      title={title}
+      group="product-details"
+      defaultOpen={open}
+      summaryClassName="py-4 font-serif text-lg font-semibold text-ink"
+      icon={
         <svg
-          className="text-muted transition-transform duration-300 group-open:rotate-180"
+          className="shrink-0 text-muted transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[state=open]:rotate-180"
           width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          aria-hidden="true"
         >
           <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </summary>
+      }
+    >
       <div className="pb-5 text-sm leading-relaxed text-ink/80">{children}</div>
-    </details>
+    </AccordionItem>
   );
 }
 

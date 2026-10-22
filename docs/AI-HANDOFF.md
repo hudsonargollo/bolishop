@@ -832,3 +832,25 @@ several open, as before). FAQ page accordion left unchanged (not requested).
 `src/app/(store)/faq/page.tsx` → each `<details>` now has `name="faq"` (native exclusive accordion, no JS).
 Tested locally: 7 questions; click 1st → 3rd → 4th → 4th again = only the clicked one open, then none; no
 console errors; eslint + tsc clean. Pushed → live.
+
+### 2026-10-22 — Smooth (premium) open/close animation for Product details + FAQ
+
+**Request:** sections opened/closed with a snap; owner wanted a smooth, professional ("premium") feel on
+both the FAQ and every product's details.
+
+**Fix:** new client component `src/components/ui/accordion-item.tsx` (`AccordionItem`) used by the product
+page `Accordion` and the FAQ list (the native `name=` exclusive attribute was removed in favour of this).
+- Opening animates height 0 → content height + fade in (420 ms); closing animates to 0 + fade out (320 ms);
+  easing `cubic-bezier(0.22, 1, 0.36, 1)`; the chevron / "+" icon rotates with the same timing.
+- Items with the same `group` ("product-details", "faq") stay exclusive: opening one smoothly closes the
+  others. Re-clicking mid-animation reverses from the current height.
+- Web Animations API (works in Chrome/Edge/Firefox/iPhone Safari). `prefers-reduced-motion` → instant.
+- State lives in `data-state` (icon uses `group-data-[state=open]:`); `aria-expanded` on the summary;
+  keyboard Enter/Space work (handled via the summary click); without JS it's still a plain `<details>`.
+- Robustness: uses `anim.finished` (resolves even without painted frames) + a timeout that calls
+  `anim.finish()`, so a section can never get stuck "closing" in a background tab (found while testing —
+  the preview pane paused animations).
+
+**Tested (local):** FAQ and product page — open/close/switch/rapid triple-click end in the right state;
+inspected running animations (close 57.5px→0 / 320 ms, open 0→58px / 420 ms, correct easing); screenshots;
+no console errors; eslint + tsc clean. Pushed → live.

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Emblem } from "@/components/brand/emblem";
 import { getStoreSettings } from "@/lib/settings";
+import { AccordionItem } from "@/components/ui/accordion-item";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/faq" },
@@ -54,14 +55,23 @@ export default async function FaqPage() {
 
       <div className="mt-12 divide-y divide-[var(--line)] border-y border-[var(--line)]">
         {FAQS.map((item) => (
-          // Shared `name` = only one answer open at a time.
-          <details key={item.q} name="faq" className="group py-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-lg text-ink marker:hidden">
-              {item.q}
-              <span className="text-gold-deep transition-transform group-open:rotate-45">+</span>
-            </summary>
-            <p className="mt-3 text-sm leading-relaxed text-ink/80">{item.a}</p>
-          </details>
+          <AccordionItem
+            key={item.q}
+            title={item.q}
+            group="faq"
+            className="py-4"
+            summaryClassName="font-serif text-lg text-ink"
+            icon={
+              <span
+                aria-hidden="true"
+                className="shrink-0 text-xl leading-none text-gold-deep transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[state=open]:rotate-45"
+              >
+                +
+              </span>
+            }
+          >
+            <p className="pt-3 text-sm leading-relaxed text-ink/80">{item.a}</p>
+          </AccordionItem>
         ))}
       </div>
 
