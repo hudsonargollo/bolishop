@@ -810,3 +810,20 @@ auto-deploys with the new env vars.
   warning; only the Blob-store warning remains). Live sign-up test is left to the owner (the AI doesn't enter
   passwords / create accounts on the production site); steps sent: register with a real Gmail → code from
   jewelryzariera@gmail.com → verify → "✓ Verified". If it fails: screenshot + Vercel Logs search `[email]`.
+
+### 2026-10-22 — Product details: only one section open at a time
+
+**Request:** on the product page, "Product details" sections (Highlights & specifications, About this item,
+Size & fit, Care & cleaning, Shipping & returns) could all be open together → make it one-at-a-time, on every
+product.
+
+**Fix:** `src/app/(store)/product/[slug]/page.tsx` → `Accordion` now renders `<details name="product-details">`.
+Native HTML *exclusive accordion*: `<details>` elements sharing a `name` close each other, no client JS
+(page stays a server component). "Highlights & specifications" still opens by default; clicking the open one
+closes it. One component is used for all products, so it applies site-wide.
+
+**Tested (local):** clicked sections 2 → 3 → 5 → 5 again: only the clicked one open each time, then all closed;
+`name="product-details"` present (5 sections) on 3 other products; screenshot OK; fresh page load has no
+console/hydration errors (an earlier hydration warning came from my test script clicking before hydration).
+eslint + tsc clean. Browser support: Chrome/Edge 120+, Safari 17.2+, Firefox 130+ (older browsers just allow
+several open, as before). FAQ page accordion left unchanged (not requested).

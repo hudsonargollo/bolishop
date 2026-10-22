@@ -310,7 +310,8 @@ function Accordion({
   children: React.ReactNode;
 }) {
   return (
-    <details open={open} className="group">
+    // Same `name` on every section = exclusive accordion: opening one closes the others.
+    <details name="product-details" open={open} className="group">
       <summary className="flex cursor-pointer list-none items-center justify-between py-4 font-serif text-lg font-semibold text-ink [&::-webkit-details-marker]:hidden">
         {title}
         <svg
