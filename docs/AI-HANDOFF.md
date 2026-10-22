@@ -827,3 +827,8 @@ closes it. One component is used for all products, so it applies site-wide.
 console/hydration errors (an earlier hydration warning came from my test script clicking before hydration).
 eslint + tsc clean. Browser support: Chrome/Edge 120+, Safari 17.2+, Firefox 130+ (older browsers just allow
 several open, as before). FAQ page accordion left unchanged (not requested).
+
+**2026-10-22 — FAQ: one answer open at a time.** Owner asked to apply the same behaviour on the FAQ page.
+`src/app/(store)/faq/page.tsx` → each `<details>` now has `name="faq"` (native exclusive accordion, no JS).
+Tested locally: 7 questions; click 1st → 3rd → 4th → 4th again = only the clicked one open, then none; no
+console errors; eslint + tsc clean. Pushed → live.

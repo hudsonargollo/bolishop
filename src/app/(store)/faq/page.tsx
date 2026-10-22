@@ -54,7 +54,8 @@ export default async function FaqPage() {
 
       <div className="mt-12 divide-y divide-[var(--line)] border-y border-[var(--line)]">
         {FAQS.map((item) => (
-          <details key={item.q} className="group py-4">
+          // Shared `name` = only one answer open at a time.
+          <details key={item.q} name="faq" className="group py-4">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-lg text-ink marker:hidden">
               {item.q}
               <span className="text-gold-deep transition-transform group-open:rotate-45">+</span>
