@@ -854,3 +854,16 @@ page `Accordion` and the FAQ list (the native `name=` exclusive attribute was re
 **Tested (local):** FAQ and product page — open/close/switch/rapid triple-click end in the right state;
 inspected running animations (close 57.5px→0 / 320 ms, open 0→58px / 420 ms, correct easing); screenshots;
 no console errors; eslint + tsc clean. Pushed → live.
+
+**2026-10-22 — Admin password forgotten (owner).** Passwords are stored as scrypt hashes, so they can't be
+recovered, only reset. Checked without printing: local admin `admin@zariera.com` matches `.env`
+`ADMIN_PASSWORD` (line 10); the **live (Neon)** admin hash does NOT match (it was set to something else).
+Reset process: owner writes a new strong password in `.env` `ADMIN_PASSWORD` → run `npm run db:create-admin`
+(upsert, re-hashes) against local and against Neon with `DATABASE_URL=<Neon direct URL>`. The AI runs the
+script but never reads/prints the password.
+- Owner set a new `ADMIN_PASSWORD` in `.env`; `db:create-admin` run on local + Neon; verified both admin hashes
+  match the new `.env` value. Owner advised to pick a stronger password later (the new one is short/common
+  and was typed in chat).
+- Owner reported local not working: dev server had simply stopped (previous session closed; no error in log,
+  Postgres on 5432 up). Restarted hidden (`npm run dev`); home, shop, faq, admin/login, register → 200.
+  Note: the local dev server stops whenever the AI session/PC restarts → run `npm run dev` in the project folder.
