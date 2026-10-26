@@ -48,6 +48,12 @@ Built to the approved **Standard package** scope.
 | `npm run db:push`  | Push schema without a migration       |
 | `npm run db:seed`  | Seed categories + sample products     |
 | `npm run db:studio`| Open Prisma Studio (DB GUI)           |
+| `npm run db:create-admin` | Create/update the admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
+| `npm run db:copy`  | Copy all data between two databases (see `prisma/copy-data.ts`) |
+
+> The `prisma/*.ts` scripts run through [`tsx`](https://tsx.is), so they work on any
+> Node 20+ build — including distro packages (e.g. Ubuntu's `nodejs`) that ship
+> without Node's built-in TypeScript support.
 
 ## Data model (Prisma)
 
