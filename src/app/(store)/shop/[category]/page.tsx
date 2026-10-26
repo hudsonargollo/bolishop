@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { NotifyForm } from "@/components/notify-form";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCategoryBySlug, getProducts, getMaterials } from "@/lib/catalog";
+import { getCategoryBySlug, getProducts, getShopFacets } from "@/lib/catalog";
 import { parseProductFilters } from "@/lib/filters";
 import { ShopBrowser } from "@/components/shop/shop-browser";
 import { Emblem } from "@/components/brand/emblem";
@@ -31,12 +31,11 @@ export default async function CategoryPage({
   const sp = await searchParams;
   const parsed = parseProductFilters(sp);
   const filters = { ...parsed, categorySlug: cat.slug };
-  const [products, materials] = await Promise.all([
-    getProducts(filters),
-    getMaterials(),
-  ]);
+  const [products, facets] = await Promise.all([getProducts(filters), getShopFacets(cat.slug)]);
 
-  const hasFilters = Boolean(parsed.q || parsed.material || parsed.minPrice || parsed.maxPrice);
+  const hasFilters = Boolean(
+    parsed.q || parsed.material || parsed.minPrice || parsed.maxPrice || parsed.onSale || parsed.inStock
+  );
 
   // Category with no products yet → elegant "Coming soon" (e.g. Necklaces, Earrings).
   if (products.length === 0 && !hasFilters) {
@@ -71,7 +70,7 @@ export default async function CategoryPage({
       title={cat.name}
       description={cat.description}
       products={products}
-      materials={materials}
+      facets={facets}
     />
   );
 }

@@ -1007,3 +1007,32 @@ Test cart cleared afterwards. On `dev` only — not live.
   admin image upload works through Vercel Blob. Revoking the read-write token is optional (the SDK uses OIDC
   when `BLOB_STORE_ID` is set); if revoked, upload one photo again to re-check. A test upload that wasn't saved
   leaves an unused file in the store (Storage → zariera-uploads → Manage Blobs) — harmless, can be deleted.
+
+### 2026-10-26 — Premium shop sidebar: price slider, categories, offers, mobile drawer (Claude)
+**Request:** the price filter (two number boxes with spinner arrows + "Apply") looked "beginner"; owner wanted a
+premium, professional sidebar with whatever a good shop sidebar should have.
+
+**What changed**
+- **Sidebar** (`components/shop/shop-filters.tsx`, desktop ≥ lg, in a "Refine" card):
+  - **Categories** with counts (whole store); empty ones say "Soon" (link still opens the Coming-soon page).
+    Links keep the current filters; active one has a gold bar.
+  - **Price** (`components/shop/price-range.tsx`): dual-thumb gold slider (Rs 100 steps, bounds = cheapest /
+    dearest piece in scope, rounded to 100), two "Rs" text fields (no spinners; Enter/blur applies, swaps if
+    reversed), and 3 quick chips built from the real spread rounded to Rs 500 (e.g. "Under Rs 2,500",
+    "Rs 2,500 – 3,000", "Rs 3,000 & above"). Applies on release — no Apply button.
+  - **Offers & availability** switches: **On sale** (`?sale=1`, compareAtPrice > price via Prisma field
+    reference) and **In stock only** (`?stock=1`), each with a count.
+  - **Material** as custom radios with counts.
+- **Results bar** (`components/shop/shop-toolbar.tsx`): piece count, **Sort by** moved here (pill select),
+  removable active-filter chips + "Clear all" (keeps sort). **Mobile:** "Filters (n)" button opens a left drawer
+  (same filters, "Clear" + "Show N pieces", Esc/overlay closes, page scroll locked, z-80 so it sits above the
+  chat launcher).
+- **Data:** `getShopFacets(categorySlug?)` in `lib/catalog.ts` (replaces `getMaterials`) — counts + bounds in
+  one query, sample-data fallback kept. `ProductFilters` gained `onSale` / `inStock` (`lib/filters.ts` parses
+  `sale=1` / `stock=1`); category "Coming soon" check counts them too. `.range-dual` slider CSS in `globals.css`.
+
+**Tested (local, real data):** On sale → 7; + "Under Rs 2,500" → 3; typed min 2,400 → 10 (slider followed);
+dragged max to 3,300 → 6; Bracelets link keeps filters, bounds re-scope to 2,400–3,900 → 4; sort low→high;
+removing a chip / Clear all; DB counts match (6 / 3 / 10 / 4). Mobile 375px (no horizontal scroll, drawer,
+footer button), dark mode (sidebar + drawer + chips). tsc + eslint (whole `src`) clean. Note: Browser-pane
+screenshots lag while the pane is hidden — verify with DOM checks or show the pane first.

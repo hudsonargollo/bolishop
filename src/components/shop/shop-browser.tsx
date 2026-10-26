@@ -1,17 +1,24 @@
 import { Suspense } from "react";
-import type { ProductView } from "@/lib/types";
+import type { ProductView, ShopFacets } from "@/lib/types";
 import { ProductGrid } from "@/components/product-grid";
 import { ShopFilters } from "./shop-filters";
+import { ShopToolbar } from "./shop-toolbar";
 
 type Props = {
   eyebrow: string;
   title: string;
   description?: string | null;
   products: ProductView[];
-  materials: string[];
+  facets: ShopFacets;
 };
 
-export function ShopBrowser({ eyebrow, title, description, products, materials }: Props) {
+export function ShopBrowser({ eyebrow, title, description, products, facets }: Props) {
+  const countLine = (
+    <p className="mb-5 border-b border-[var(--line)] pb-4 text-sm text-muted">
+      {products.length} {products.length === 1 ? "piece" : "pieces"}
+    </p>
+  );
+
   return (
     <div className="mx-auto max-w-6xl px-5 py-14">
       <header className="border-b border-[var(--line)] pb-8">
@@ -20,15 +27,21 @@ export function ShopBrowser({ eyebrow, title, description, products, materials }
         {description && <p className="mt-2 max-w-2xl text-muted">{description}</p>}
       </header>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[220px_1fr]">
-        <Suspense fallback={<div className="text-sm text-muted">Loading filters…</div>}>
-          <ShopFilters materials={materials} />
-        </Suspense>
+      <div className="mt-10 grid gap-10 lg:grid-cols-[250px_1fr]">
+        {/* Desktop sidebar (mobile uses the drawer in ShopToolbar) */}
+        <aside className="hidden lg:block">
+          <div className="rounded-2xl border border-[var(--line)] bg-surface/60 p-5 shadow-[0_24px_50px_-40px_rgba(38,8,16,0.5)]">
+            <p className="mb-5 font-serif text-xl font-semibold text-ink">Refine</p>
+            <Suspense fallback={<div className="text-sm text-muted">Loading filters…</div>}>
+              <ShopFilters facets={facets} />
+            </Suspense>
+          </div>
+        </aside>
 
         <div>
-          <p className="mb-5 text-sm text-muted">
-            {products.length} {products.length === 1 ? "piece" : "pieces"}
-          </p>
+          <Suspense fallback={countLine}>
+            <ShopToolbar count={products.length} facets={facets} />
+          </Suspense>
           <ProductGrid products={products} />
         </div>
       </div>

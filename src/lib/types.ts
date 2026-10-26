@@ -30,5 +30,22 @@ export type ProductFilters = {
   minPrice?: number;
   maxPrice?: number;
   material?: string;
+  /** Only pieces with a compare-at price above the selling price. */
+  onSale?: boolean;
+  /** Only pieces with stock left. */
+  inStock?: boolean;
   sort?: "newest" | "price-asc" | "price-desc";
+};
+
+/** Counts and price bounds that drive the shop sidebar. */
+export type ShopFacets = {
+  /** Active pieces in the whole store. */
+  total: number;
+  categories: { name: string; slug: string; count: number }[];
+  /** The rest are scoped to the current category (or the whole store). */
+  priceMin: number;
+  priceMax: number;
+  materials: { name: string; count: number }[];
+  onSale: number;
+  inStock: number;
 };

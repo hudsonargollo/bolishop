@@ -33,6 +33,8 @@ export function parseProductFilters(sp: RawParams): ProductFilters {
     material: first(sp.material),
     minPrice,
     maxPrice,
+    onSale: first(sp.sale) === "1" || undefined,
+    inStock: first(sp.stock) === "1" || undefined,
     sort,
   };
 }

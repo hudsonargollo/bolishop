@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 import { sampleCategories, sampleProducts } from "./sample-data";
-import type { CategoryView, ProductView, ProductFilters } from "./types";
+import type { CategoryView, ProductView, ProductFilters, ShopFacets } from "./types";
 
 // The storefront reads through these functions. Each attempts a real Prisma
 // query and gracefully falls back to bundled sample data when no database is
@@ -88,7 +88,7 @@ export async function getCategoryBySlug(slug: string): Promise<CategoryView | nu
 // ---------- Products ----------
 
 export async function getProducts(filters: ProductFilters = {}): Promise<ProductView[]> {
-  const { categorySlug, q, minPrice, maxPrice, material, sort = "newest" } = filters;
+  const { categorySlug, q, minPrice, maxPrice, material, onSale, inStock, sort = "newest" } = filters;
 
   try {
     const orderBy =
@@ -103,6 +103,8 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
         active: true,
         ...(categorySlug ? { category: { slug: categorySlug } } : {}),
         ...(material ? { material } : {}),
+        ...(onSale ? { compareAtPrice: { gt: prisma.product.fields.price } } : {}),
+        ...(inStock ? { stock: { gt: 0 } } : {}),
         ...(q
           ? {
               OR: [
@@ -167,34 +169,86 @@ export async function getRelatedProducts(
   return all.filter((p) => p.id !== product.id).slice(0, limit);
 }
 
-export async function getMaterials(): Promise<string[]> {
+// ---------- Shop sidebar facets ----------
+
+type FacetRow = {
+  price: number;
+  compareAtPrice: number | null;
+  stock: number;
+  material: string | null;
+  category: { name: string; slug: string };
+};
+
+/** Category counts (whole store) + price bounds, materials, sale and stock counts
+ *  for the current category scope. */
+export async function getShopFacets(categorySlug?: string): Promise<ShopFacets> {
+  let rows: FacetRow[];
+  let cats: { name: string; slug: string }[];
   try {
-    const rows = await prisma.product.findMany({
-      where: { active: true, material: { not: null } },
-      select: { material: true },
-      distinct: ["material"],
-    });
-    const mats = rows.map((r) => r.material).filter((m): m is string => !!m);
-    if (mats.length === 0) return distinctSampleMaterials();
-    return mats.sort();
+    const [products, categories] = await Promise.all([
+      prisma.product.findMany({
+        where: { active: true },
+        select: {
+          price: true,
+          compareAtPrice: true,
+          stock: true,
+          material: true,
+          category: { select: { name: true, slug: true } },
+        },
+      }),
+      prisma.category.findMany({ orderBy: { name: "asc" }, select: { name: true, slug: true } }),
+    ]);
+    rows = products.map((p) => ({
+      price: Number(p.price),
+      compareAtPrice: p.compareAtPrice == null ? null : Number(p.compareAtPrice),
+      stock: p.stock,
+      material: p.material,
+      category: p.category,
+    }));
+    cats = categories;
   } catch (err) {
     warnFallback(err);
-    return distinctSampleMaterials();
+    rows = sampleProducts;
+    cats = sampleCategories;
   }
+
+  const scoped = categorySlug ? rows.filter((r) => r.category.slug === categorySlug) : rows;
+  const prices = (scoped.length ? scoped : rows).map((r) => r.price);
+  const priceMin = prices.length ? Math.floor(Math.min(...prices) / 100) * 100 : 0;
+  let priceMax = prices.length ? Math.ceil(Math.max(...prices) / 100) * 100 : 0;
+  if (priceMax <= priceMin) priceMax = priceMin + 100;
+
+  const materialCounts = new Map<string, number>();
+  for (const r of scoped) {
+    if (r.material) materialCounts.set(r.material, (materialCounts.get(r.material) ?? 0) + 1);
+  }
+
+  return {
+    total: rows.length,
+    categories: cats.map((c) => ({
+      ...c,
+      count: rows.filter((r) => r.category.slug === c.slug).length,
+    })),
+    priceMin,
+    priceMax,
+    materials: [...materialCounts]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    onSale: scoped.filter((r) => r.compareAtPrice != null && r.compareAtPrice > r.price).length,
+    inStock: scoped.filter((r) => r.stock > 0).length,
+  };
 }
 
 // ---------- Sample-data filtering (mirrors the Prisma query) ----------
 
-function distinctSampleMaterials(): string[] {
-  return [...new Set(sampleProducts.map((p) => p.material).filter((m): m is string => !!m))].sort();
-}
-
 function filterSample(filters: ProductFilters): ProductView[] {
-  const { categorySlug, q, minPrice, maxPrice, material, sort = "newest" } = filters;
+  const { categorySlug, q, minPrice, maxPrice, material, onSale, inStock, sort = "newest" } = filters;
   let list = [...sampleProducts];
 
   if (categorySlug) list = list.filter((p) => p.category.slug === categorySlug);
   if (material) list = list.filter((p) => p.material === material);
+  if (onSale) list = list.filter((p) => p.compareAtPrice != null && p.compareAtPrice > p.price);
+  if (inStock) list = list.filter((p) => p.stock > 0);
   if (minPrice != null) list = list.filter((p) => p.price >= minPrice);
   if (maxPrice != null) list = list.filter((p) => p.price <= maxPrice);
   if (q) {
