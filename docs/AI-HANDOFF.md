@@ -1,7 +1,8 @@
 # ZARIERA — AI Handoff Book
 
 > A complete context handoff for any AI assistant or developer picking up this project.
-> Last updated: 2026-10-02 — full audit (§13) **and all findings fixed** (§13.7); session log in §14.
+> Last updated: 2026-10-26 — dev machine moved to Ubuntu (§3); session log in §14.
+> Full audit: §13 (all findings fixed, §13.7).
 >
 > **Rule for every AI session:** record everything you do (audits, fixes, decisions, commands
 > run against the DB, open questions) in §14 *Session log* of this file before finishing.
@@ -14,7 +15,11 @@
 rings, earrings, bracelets/bangles) for a Pakistani client, selling in PKR (Rs). It is **not** real
 gold. Storefront + a full admin dashboard.
 
-- **Project root:** `C:\Users\Gigalabs\Downloads\zariera`
+- **Project root:** `/home/ahmad/zariera_project` (Ubuntu, since 2026-10-26; was `C:\Users\Gigalabs\Downloads\zariera` on Windows)
+- **Live site:** <https://zariera-project.vercel.app/> — **Vercel**, auto-deploys every push to GitHub `main`
+  (repo `mian76951-ui/zariera_project`). Netlify is not used for the live site.
+- **Branches:** day-to-day work goes on **`dev`** (pushes → Vercel Preview only). `main` = live; it gets
+  `dev` merged in only when the owner says to go live (see §12).
 - **Owner/developer:** Muhammad Ahmad Waseem (communicates in Roman Urdu)
 - **Audience:** Pakistan; COD + online payment (PayFast / Safepay); dropshipping via Leopards / TCS.
 
@@ -38,7 +43,7 @@ gold. Storefront + a full admin dashboard.
 ## 3. Run it
 
 ```bash
-cd C:\Users\Gigalabs\Downloads\zariera
+cd /home/ahmad/zariera_project
 npm install
 npm run dev          # http://localhost:3000
 ```
@@ -48,7 +53,19 @@ Other scripts:
 - `npm run db:migrate` — apply Prisma migrations (dev)
 - `npm run db:push` — push schema without migration
 - `npm run db:studio` — Prisma Studio (browse DB)
+- `npm run db:seed` — seed categories + sample products (upsert, deletes nothing)
 - `npm run db:create-admin` — create/update the admin user from `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env`
+- `npm run db:copy` — copy all data between two DBs (`SOURCE_DATABASE_URL` / `TARGET_DATABASE_URL`)
+
+The `prisma/*.ts` scripts run through **`tsx`** (dev dependency) — not `node --experimental-strip-types`,
+which fails on Ubuntu's `nodejs` package (built without TypeScript support → `ERR_NO_TYPESCRIPT`).
+
+### Ubuntu dev machine (since 2026-10-26)
+- Ubuntu 26.04, Node 22 + npm 9.2 from apt, VS Code, Git (SSH key works for `mian76951-ui`).
+- Local DB: PostgreSQL 18 on **`localhost:5433`**, db `zariera`, user `postgres`. `.env` points
+  `DATABASE_URL` and `DIRECT_URL` there (never at Neon for day-to-day work — that is the live data).
+- Fresh-machine setup: `sudo apt install postgresql` → set the `postgres` password to match `.env` →
+  `createdb zariera` → `npm install` → `npx prisma migrate dev` → `npm run db:seed` → `npm run db:create-admin`.
 
 ### ⚠️ Windows dev-server gotchas (IMPORTANT)
 - **Prisma `generate` EPERM:** if `prisma generate`/migrate fails with EPERM, a stray `next` process
@@ -235,6 +252,9 @@ There is also one real earlier test order **`ZR-G2MACF-8SX`** ("hamza") — the 
 - Never fabricate authentic product photos; never log into the client's personal accounts.
 - Keep colors on-brand (maroon `#5b1a2b`, gold `#c39a4e`, cream `#f4e8d5`); dark mode must not clash.
 - **Every action an AI takes on this project must be logged in §14 (Session log) of this file** (user request, 2026-10-02).
+- **Work on the `dev` branch; never push to `main` without the owner's go-ahead** — Vercel deploys `main`
+  straight to the live site. Owner's plan (2026-10-26): finish the whole project on `dev` (commit + push
+  there freely; Vercel only makes Preview deploys for it), then merge `dev` → `main` once at the end to go live.
 
 ---
 
@@ -867,3 +887,33 @@ script but never reads/prints the password.
 - Owner reported local not working: dev server had simply stopped (previous session closed; no error in log,
   Postgres on 5432 up). Restarted hidden (`npm run dev`); home, shop, faq, admin/login, register → 200.
   Note: the local dev server stops whenever the AI session/PC restarts → run `npm run dev` in the project folder.
+
+### 2026-10-26 — Moved to Ubuntu: local setup, db scripts fixed (Claude)
+
+**Context:** owner replaced Windows with Ubuntu 26.04 on the laptop and asked what is needed to keep
+working locally. The repo was already cloned at `/home/ahmad/zariera_project` (`main` = `0574c95`).
+
+- **Checked the machine:** Git, Node 22, VS Code, GitHub SSH access were already OK. Missing: PostgreSQL
+  server (only the `psql` client was installed) and `.env` (stayed on Windows). Owner installed Postgres 18
+  and wrote a new `.env` (local DB on port 5433).
+- **DB login failed** at first (`P1000` / `password authentication failed`): the `postgres` user's password
+  didn't match `.env`. Owner fixed it; `prisma migrate status` → all 9 migrations applied, schema up to date.
+- **`npm run db:seed` / `db:create-admin` failed** with `ERR_NO_TYPESCRIPT`: Ubuntu's `nodejs` package is
+  built without Node's TypeScript support (`process.features.typescript === false`), so
+  `node --experimental-strip-types` can't run `prisma/*.ts`.
+  **Fix (commit `58b5515`):** added `tsx` ^4.23.15 as a devDependency; `db:seed`, `db:create-admin`,
+  `db:copy` and the `prisma.seed` hook now run through `tsx`. README scripts table updated.
+- **Tested on Ubuntu:** `npm run db:seed` (4 categories, 6 products), `npx prisma db seed`,
+  `npm run db:create-admin` (admin ready), `npm run db:copy` (stops with "Set SOURCE_DATABASE_URL and
+  TARGET_DATABASE_URL." when not given — nothing copied). Local site on :3000 serves the seeded products
+  from the DB; `/admin/login` → 200. **Local DB only — Neon was not touched.**
+- **Pushed `58b5515` to `main` → Vercel deployed it to Production** (GitHub deployment status "success";
+  live site → 200). Only dev scripts/README changed, so the live store is unaffected. Mistake: I told the
+  owner Netlify would deploy it — the live site is on **Vercel** (<https://zariera-project.vercel.app/>).
+- **Owner's decision:** finish the whole project first, go live at the end → new house rule in §12
+  (no push to `main` without the owner's go-ahead). This handoff updated: §1 root + live URL, §3 Ubuntu setup.
+- Prisma warns that `package.json#prisma` is deprecated (removed in Prisma 7) — harmless on Prisma 6; move
+  to `prisma.config.ts` when upgrading.
+- **Branch workflow set up:** created branch **`dev`** from `main` (`58b5515`) and pushed it to GitHub.
+  From now on all work is committed + pushed on `dev`; `main` (= live) only gets `dev` merged in at the end,
+  on the owner's word.
