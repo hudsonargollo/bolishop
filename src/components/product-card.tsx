@@ -1,24 +1,26 @@
 import Link from "next/link";
 import type { ProductView } from "@/lib/types";
-import { formatPrice, discountPercent } from "@/lib/format";
+import { formatPrice, discountPercent, savingsOf } from "@/lib/format";
+import { SaleRibbon, SaveLine } from "./ui/sale-badge";
 import { ProductImage } from "./product-image";
 import { QuickAdd } from "./quick-add";
 
 export function ProductCard({ product }: { product: ProductView }) {
   const off = discountPercent(product.price, product.compareAtPrice);
+  const saved = savingsOf(product.price, product.compareAtPrice);
   const soldOut = product.stock <= 0;
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-lg border border-[var(--line)] bg-surface/70 transition hover:border-gold hover:shadow-[0_18px_40px_-24px_rgba(38,8,16,0.5)]">
+    <div
+      className={`group flex h-full flex-col overflow-hidden rounded-lg border bg-surface/70 transition hover:border-gold hover:shadow-[0_18px_40px_-24px_rgba(38,8,16,0.5)] ${
+        off ? "border-gold/55" : "border-[var(--line)]"
+      }`}
+    >
       <Link href={`/product/${product.slug}`} className="relative block aspect-square overflow-hidden bg-sand">
         <div className="h-full w-full transition duration-500 group-hover:scale-105">
           <ProductImage src={product.images[0]} alt={product.name} seed={product.slug} />
         </div>
-        {off && (
-          <span className="absolute left-3 top-3 rounded-full bg-maroon px-2.5 py-1 text-[0.65rem] font-medium tracking-wide text-gold">
-            −{off}%
-          </span>
-        )}
+        {off && <SaleRibbon percent={off} />}
         {soldOut && (
           <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[0.65rem] font-medium tracking-wide text-white">
             Sold out
@@ -35,12 +37,21 @@ export function ProductCard({ product }: { product: ProductView }) {
             {product.name}
           </h3>
         </Link>
-        <div className="mt-auto flex items-baseline gap-2 pt-3">
-          <span className="font-medium text-ink">{formatPrice(product.price)}</span>
-          {product.compareAtPrice && (
-            <span className="text-sm text-muted line-through">
-              {formatPrice(product.compareAtPrice)}
-            </span>
+        <div className="mt-auto pt-3">
+          {saved ? (
+            <>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-lg font-semibold text-maroon dark:text-gold-hi">
+                  {formatPrice(product.price)}
+                </span>
+                <span className="text-sm text-muted line-through decoration-maroon/50 dark:decoration-gold/60">
+                  {formatPrice(product.compareAtPrice!)}
+                </span>
+              </div>
+              <SaveLine amount={saved} />
+            </>
+          ) : (
+            <span className="font-medium text-ink">{formatPrice(product.price)}</span>
           )}
         </div>
         <QuickAdd product={product} />

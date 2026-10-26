@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useCart, type CartItem } from "@/components/cart/cart-provider";
 import { ProductImage } from "@/components/product-image";
 import { useToast } from "@/components/ui/toast";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, savingsOf } from "@/lib/format";
+import { SavingsStrip } from "@/components/ui/sale-badge";
 import { shippingFor } from "@/lib/settings-shared";
 
 // Mirrors MIN_PASSWORD in lib/password.ts (that module uses node:crypto, so it
@@ -48,6 +49,9 @@ export function CheckoutForm({
   // Single-item "Buy it now" checkout, otherwise the whole cart.
   const items = buyNow ? [buyNow] : cart.items;
   const subtotal = buyNow ? buyNow.price * buyNow.quantity : cart.subtotal;
+  const savings = buyNow
+    ? (savingsOf(buyNow.price, buyNow.compareAtPrice) ?? 0) * buyNow.quantity
+    : cart.savings;
   const ready = buyNow ? true : cart.ready;
   const toast = useToast();
   const [payment, setPayment] = useState<PaymentMethod>("COD");
@@ -290,7 +294,12 @@ export function CheckoutForm({
                     <p className="truncate text-ink">{i.name}</p>
                     {i.material && <p className="truncate text-xs text-muted">{i.material}</p>}
                   </div>
-                  <span className="shrink-0 text-ink">{formatPrice(i.price * i.quantity)}</span>
+                  <div className="shrink-0 text-right">
+                    <span className="text-ink">{formatPrice(i.price * i.quantity)}</span>
+                    {i.compareAtPrice && savingsOf(i.price, i.compareAtPrice) && (
+                      <p className="text-xs text-muted line-through">{formatPrice(i.compareAtPrice * i.quantity)}</p>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -313,6 +322,7 @@ export function CheckoutForm({
               <span className="font-medium text-ink">Total</span>
               <span className="font-serif text-2xl font-semibold text-ink">{formatPrice(total)}</span>
             </div>
+            {savings > 0 && <SavingsStrip amount={savings} className="mt-4" />}
 
             {error && (
               <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>

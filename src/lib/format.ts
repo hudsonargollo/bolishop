@@ -7,7 +7,13 @@ export function formatPrice(amount: number): string {
   return `Rs ${pkr.format(Math.round(amount))}`;
 }
 
-export function discountPercent(price: number, compareAt: number | null): number | null {
+export function discountPercent(price: number, compareAt: number | null | undefined): number | null {
   if (!compareAt || compareAt <= price) return null;
   return Math.round(((compareAt - price) / compareAt) * 100);
+}
+
+/** Rupees saved per piece vs the compare-at price, or null when not on sale. */
+export function savingsOf(price: number, compareAt: number | null | undefined): number | null {
+  if (!compareAt || compareAt <= price) return null;
+  return compareAt - price;
 }

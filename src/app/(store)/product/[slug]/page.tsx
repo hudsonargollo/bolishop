@@ -6,6 +6,7 @@ import { formatPrice, discountPercent } from "@/lib/format";
 import { ProductGallery } from "@/components/product-gallery";
 import { getStoreSettings } from "@/lib/settings";
 import { ProductCard } from "@/components/product-card";
+import { DealPanel } from "@/components/ui/sale-badge";
 import { AddToCart } from "@/components/cart/add-to-cart";
 import { JsonLd } from "@/components/json-ld";
 
@@ -163,15 +164,13 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           <h1 className="mt-2 font-serif text-4xl font-semibold text-ink">{product.name}</h1>
 
 
-          <div className="mt-4 flex flex-wrap items-baseline gap-3">
-            <span className="font-serif text-3xl font-semibold text-ink">{formatPrice(product.price)}</span>
-            {product.compareAtPrice && (
-              <span className="text-lg text-muted line-through">{formatPrice(product.compareAtPrice)}</span>
-            )}
-            {off && (
-              <span className="rounded-full bg-maroon px-2.5 py-1 text-xs font-medium text-gold">Save {off}%</span>
-            )}
-          </div>
+          {off && product.compareAtPrice ? (
+            <DealPanel price={product.price} compareAt={product.compareAtPrice} percent={off} />
+          ) : (
+            <div className="mt-4 flex flex-wrap items-baseline gap-3">
+              <span className="font-serif text-3xl font-semibold text-ink">{formatPrice(product.price)}</span>
+            </div>
+          )}
 
           {lead && <p className="mt-4 leading-relaxed text-ink/80">{lead}</p>}
 
@@ -201,6 +200,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
                 slug: product.slug,
                 name: product.name,
                 price: product.price,
+                compareAtPrice: product.compareAtPrice,
                 image: product.images[0],
                 material: product.material,
                 stock: product.stock,

@@ -31,6 +31,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
         slug: product.slug,
         name: product.name,
         price: product.price,
+        compareAtPrice: product.compareAtPrice,
         image: product.images[0],
         material: product.material,
         stock: product.stock,

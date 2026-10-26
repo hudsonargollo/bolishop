@@ -5,9 +5,10 @@ import { useCart } from "@/components/cart/cart-provider";
 import { ProductImage } from "@/components/product-image";
 import { useToast } from "@/components/ui/toast";
 import { formatPrice } from "@/lib/format";
+import { LinePrice, SavingsStrip } from "@/components/ui/sale-badge";
 
 export default function CartPage() {
-  const { items, subtotal, setQuantity, remove, count, ready } = useCart();
+  const { items, subtotal, savings, setQuantity, remove, count, ready } = useCart();
   const toast = useToast();
 
   function handleRemove(id: string, name: string) {
@@ -75,9 +76,7 @@ export default function CartPage() {
                       <p className="text-sm text-muted">{item.material}</p>
                     )}
                   </div>
-                  <span className="font-medium text-ink">
-                    {formatPrice(item.price * item.quantity)}
-                  </span>
+                  <LinePrice price={item.price} compareAt={item.compareAtPrice} quantity={item.quantity} />
                 </div>
 
                 <div className="mt-auto flex items-center justify-between pt-3">
@@ -129,6 +128,7 @@ export default function CartPage() {
               {formatPrice(subtotal)}
             </span>
           </div>
+          {savings > 0 && <SavingsStrip amount={savings} className="mt-5" />}
           <Link
             href="/checkout"
             className="mt-6 block rounded-full bg-gradient-to-r from-gold-hi to-gold px-8 py-3.5 text-center text-sm font-medium text-maroon transition hover:opacity-90"

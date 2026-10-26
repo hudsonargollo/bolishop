@@ -9,12 +9,15 @@ import {
   type ReactNode,
 } from "react";
 import { useMounted } from "@/lib/use-mounted";
+import { savingsOf } from "@/lib/format";
 
 export type CartItem = {
   id: string;
   slug: string;
   name: string;
   price: number;
+  /** Regular price when the piece is on sale (savings shown in cart / checkout). */
+  compareAtPrice?: number | null;
   image?: string;
   material?: string | null;
   stock: number;
@@ -25,6 +28,8 @@ type CartContextValue = {
   items: CartItem[];
   count: number;
   subtotal: number;
+  /** Total rupees saved vs regular prices across the cart. */
+  savings: number;
   add: (item: Omit<CartItem, "quantity">, qty?: number) => void;
   remove: (id: string) => void;
   setQuantity: (id: string, qty: number) => void;
@@ -100,7 +105,7 @@ async function refreshFromServer() {
     if (!res.ok) return;
     const data = (await res.json()) as {
       ok: boolean;
-      products?: { id: string; name: string; price: number; stock: number }[];
+      products?: { id: string; name: string; price: number; compareAtPrice: number | null; stock: number }[];
     };
     if (!data.ok || !data.products) return;
     const byId = new Map(data.products.map((p) => [p.id, p]));
@@ -108,7 +113,14 @@ async function refreshFromServer() {
       prev.map((i) => {
         const p = byId.get(i.id);
         if (!p) return { ...i, quantity: 0 }; // no longer sold
-        return { ...i, name: p.name, price: p.price, stock: p.stock, quantity: clamp(i.quantity, p.stock) };
+        return {
+          ...i,
+          name: p.name,
+          price: p.price,
+          compareAtPrice: p.compareAtPrice,
+          stock: p.stock,
+          quantity: clamp(i.quantity, p.stock),
+        };
       })
     );
   } catch {
@@ -129,6 +141,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       count: items.reduce((n, i) => n + i.quantity, 0),
       subtotal: items.reduce((s, i) => s + i.price * i.quantity, 0),
+      savings: items.reduce((s, i) => s + (savingsOf(i.price, i.compareAtPrice) ?? 0) * i.quantity, 0),
       ready,
       add: (item, qty = 1) =>
         update((prev) => {

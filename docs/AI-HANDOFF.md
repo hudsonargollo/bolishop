@@ -950,3 +950,32 @@ Neon DB had everything (15 products, 4 categories, 22 orders, 7 customers, 2 adm
 
 **Note:** the local DB now contains real customer data (names, emails, phones, addresses) — keep the laptop
 secure. The `QATEST-` demo orders came along too (§9).
+
+### 2026-10-26 — Premium sale / discount display (Claude)
+
+**Request (from the client, via owner):** discounts looked plain ("−15%" pill + small struck price) — customers
+didn't feel they were saving. Wanted a heavy, premium look that makes the saving obvious.
+
+**What changed** (new `src/components/ui/sale-badge.tsx` holds all sale UI):
+- **Product cards** (`product-card.tsx` — shop, category, search, home featured, related): hanging **maroon
+  ribbon with gold edge** pinned top-left ("15% OFF", V-notch tail, gold sheen sweep). Maroon, not gold, so it
+  stands out on gold jewelry photos (gold version was tried first and blended in). Sale cards get a gold border;
+  price shows sale price in maroon (gold in dark mode) + struck regular price + "🏷 SAVE RS 700".
+- **Product page** (`product/[slug]/page.tsx`): `DealPanel` replaces the plain price row on sale items —
+  "✦ Special offer price", big price, "Regular price ~~Rs 4,600~~", rotated gold-foil "15% OFF" seal with sheen,
+  maroon strip "You save **Rs 700** on this piece". Non-sale items unchanged.
+- **Cart + checkout**: `CartItem` now carries optional `compareAtPrice`; `useCart()` exposes `savings`.
+  Cart lines show struck regular total + "SAVE RS X" (`LinePrice`); cart and checkout summaries show a maroon
+  strip "You're saving **Rs 1,100** on this order" (`SavingsStrip`). Works for "Buy it now" checkout too
+  (`checkout/page.tsx` passes `compareAtPrice`).
+  `/api/cart/refresh` now also returns `compareAtPrice`, so carts saved before this change pick it up on the
+  next page load (tested by deleting the field from localStorage → restored).
+- `lib/format.ts`: `savingsOf(price, compareAt)`. `globals.css`: `.sale-shine` (sheen, off under
+  `prefers-reduced-motion`, colour via `--sale-shine`) and `.sale-ribbon` (clip-path notch).
+- No fake urgency (no countdowns / "only today") — the offer copy is factual.
+- Prices charged are unchanged: orders still use `price`; `compareAtPrice` is display-only.
+
+**Tested (local, real DB data — 7 of 15 products are on sale):** shop desktop + mobile 375px (no horizontal
+scroll), product page desktop + mobile, dark mode (cards + deal panel), cart with 2 sale items (Rs 700 + 400 =
+"saving Rs 1,100"), checkout summary (same), buy-now ×2 ("saving Rs 1,400"); no console errors; tsc + eslint clean.
+Test cart cleared afterwards. On `dev` only — not live.
