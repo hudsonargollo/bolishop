@@ -66,6 +66,11 @@ which fails on Ubuntu's `nodejs` package (built without TypeScript support → `
   `DATABASE_URL` and `DIRECT_URL` there (never at Neon for day-to-day work — that is the live data).
 - Fresh-machine setup: `sudo apt install postgresql` → set the `postgres` password to match `.env` →
   `createdb zariera` → `npm install` → `npx prisma migrate dev` → `npm run db:seed` → `npm run db:create-admin`.
+  To get the **real store data** instead of the seed, copy it from Neon (see the 2026-10-26 log in §14).
+- `.env` also holds **`NEON_DIRECT_URL`** (live Neon, non-pooled) — only for copying live → local. Never use it
+  as `DATABASE_URL`. It has no port and keeps `channel_binding=require`: Ubuntu's `psql` then defaults to the
+  local cluster's port 5433 (→ timeout), and Prisma rejects `channel_binding` — so add `:5432` and drop that
+  param when using it (both done on the fly in the commands below).
 
 ### ⚠️ Windows dev-server gotchas (IMPORTANT)
 - **Prisma `generate` EPERM:** if `prisma generate`/migrate fails with EPERM, a stray `next` process
@@ -917,3 +922,31 @@ working locally. The repo was already cloned at `/home/ahmad/zariera_project` (`
 - **Branch workflow set up:** created branch **`dev`** from `main` (`58b5515`) and pushed it to GitHub.
   From now on all work is committed + pushed on `dev`; `main` (= live) only gets `dev` merged in at the end,
   on the owner's word.
+
+### 2026-10-26 — Live (Neon) data copied to the local DB (Claude)
+
+**Problem:** on the new Ubuntu machine the local store showed only the 6 seed products — owner feared the
+products were lost. They weren't: GitHub holds code, not DB rows. The Windows local DB is gone, but the live
+Neon DB had everything (15 products, 4 categories, 22 orders, 7 customers, 2 admins, 1 settings row), and all
+15 product images are in git (`public/images/products/`).
+
+**What was done (owner approved: "local DB khaali karke Neon ka saara data local par copy kar do"):**
+1. Owner put the Neon **direct** URL in local `.env` as `NEON_DIRECT_URL` (first added it to Vercel by
+   mistake — told to undo that; live `/api/health` still showed the pooled `DATABASE_URL`, DB ok).
+   Read-only test (`default_transaction_read_only=on`) → Neon PostgreSQL 18.6, 9 migrations (= local).
+2. Backed up the local DB (`pg_dump --data-only -Fc`, PG 18 client) to the session scratchpad
+   (`local-before-copy.dump` — seed data only; temporary, deleted with the session).
+3. Emptied every local table except `_prisma_migrations` (`TRUNCATE … RESTART IDENTITY CASCADE`; checked the
+   URL was `localhost` first). Removed: 6 seed products, 4 categories, 1 admin, 2 local test customers.
+4. `SOURCE_DATABASE_URL=<Neon :5432, no channel_binding> TARGET_DATABASE_URL=<local> npm run db:copy` →
+   4 categories, 15 products, 2 admins, 7 customers, 22 orders, 41 items, 4 messages, 2 subscribers.
+5. `Setting` isn't copied by `copy-data.ts` → piped with `psql \copy` (Neon read-only → local): 1 row.
+6. `npm run db:create-admin` → the `.env` admin's **local** password reset to `.env` `ADMIN_PASSWORD`
+   (it came over with the live hash). Neon untouched.
+
+**Verified:** Neon vs local identical (15 products / 15 active / stock 282 / 4 cats / 22 orders / 41 items /
+7 customers / 2 admins / 1 setting); local `/shop` lists 15 products, all 15 image files exist; `/admin/login`
+200. **Nothing was written to Neon; live site unchanged.**
+
+**Note:** the local DB now contains real customer data (names, emails, phones, addresses) — keep the laptop
+secure. The `QATEST-` demo orders came along too (§9).
