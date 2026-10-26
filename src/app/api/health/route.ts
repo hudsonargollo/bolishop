@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { dbErrorKind } from "@/lib/db-errors";
+import { vercelBlobConfigured } from "@/lib/uploads";
 
 // Deployment self-check: open /api/health on the live site to see what's
 // missing. Never returns secrets — only yes/no flags, the DB *host name* and
@@ -81,8 +82,10 @@ export async function GET() {
     warnings.push(HINTS[kind]);
   }
 
-  const uploads = process.env.BLOB_READ_WRITE_TOKEN
-    ? "vercel-blob"
+  const uploads = vercelBlobConfigured()
+    ? process.env.BLOB_STORE_ID
+      ? "vercel-blob (oidc)"
+      : "vercel-blob (token)"
     : process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT
       ? "netlify-blobs"
       : process.env.VERCEL

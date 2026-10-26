@@ -41,7 +41,8 @@ doesn't run migrations).
 ## 3. Image uploads (Vercel Blob)
 
 Vercel → **Storage → Create Database → Blob** → name it `zariera-uploads` → **Connect to project**
-(all environments). This adds `BLOB_READ_WRITE_TOKEN` automatically. **Redeploy.**
+(all environments). Vercel adds `BLOB_STORE_ID` (OIDC — current default) and, if the
+"read-write token" box is ticked, `BLOB_READ_WRITE_TOKEN`; the app works with either. **Redeploy.**
 Without it, admin image upload shows "Image uploads on Vercel need a Blob store".
 
 ## 4. Check the deployment

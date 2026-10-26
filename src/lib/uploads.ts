@@ -34,12 +34,19 @@ export function sniffImage(buf: Buffer): ImageExt | null {
 export const SAFE_UPLOAD_NAME = /^[a-z0-9-]{1,80}\.(jpg|png|webp|avif)$/;
 
 // ---------- Storage backends ----------
-//  - Vercel: Vercel Blob (needs a Blob store connected to the project → it sets
-//    BLOB_READ_WRITE_TOKEN). Files get a public CDN URL that is stored as-is.
+//  - Vercel: Vercel Blob (needs a Blob store connected to the project). Newer
+//    connections authenticate with OIDC (BLOB_STORE_ID + Vercel's OIDC token);
+//    older ones set BLOB_READ_WRITE_TOKEN. @vercel/blob picks whichever exists.
+//    Files get a public CDN URL that is stored as-is.
 //  - Netlify: Netlify Blobs (store "product-uploads"), served by /uploads/products/[file].
 //  - VPS / local: disk (UPLOAD_DIR), served by /uploads/products/[file].
 
 const BLOB_STORE = "product-uploads";
+
+/** True when a Vercel Blob store is connected (OIDC store id or read-write token). */
+export function vercelBlobConfigured(): boolean {
+  return Boolean(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
+}
 
 function onNetlify(): boolean {
   return Boolean(process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT || process.env.NETLIFY_LOCAL);
@@ -52,7 +59,7 @@ async function blobStore() {
 
 /** Saves an uploaded image and returns the URL to store on the product. */
 export async function saveUpload(filename: string, bytes: Buffer, ext: ImageExt): Promise<string> {
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  if (vercelBlobConfigured()) {
     const { put } = await import("@vercel/blob");
     const blob = await put(`products/${filename}`, bytes, {
       access: "public",

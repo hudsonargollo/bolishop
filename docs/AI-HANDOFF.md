@@ -988,3 +988,18 @@ Test cart cleared afterwards. On `dev` only — not live.
   live jaye."** → checked `dev`'s Preview build (`7ac6bf6`) had succeeded, `git merge --ff-only origin/dev` on
   `main` (feb25f6, ea587ea, 7ac6bf6 — handoff notes + the premium sale display), §1/§12 updated, pushed `main`
   → Vercel Production. Local checkout is now on `main`; `dev` left on GitHub (fully merged, unused).
+
+### 2026-10-26 — Vercel Blob store connected; uploads accept OIDC (Claude)
+- Live `/api/health` said `uploads: NOT CONFIGURED` → live admin image upload would fail. Guided the owner:
+  Vercel → Storage → Create → **Blob** `zariera-uploads` (**Public**, region SIN1) → connected to
+  `zariera-project` (All Environments, "read-write token" box ticked).
+- Vercel now connects Blob stores with **OIDC**: the connection lists `BLOB_STORE_ID` +
+  `BLOB_WEBHOOK_PUBLIC_KEY`, and a banner suggests revoking the read-write token. Our code only looked for
+  `BLOB_READ_WRITE_TOKEN`, so uploads could still have failed.
+- **Fix:** `vercelBlobConfigured()` in `src/lib/uploads.ts` (true for `BLOB_STORE_ID` **or**
+  `BLOB_READ_WRITE_TOKEN`); `saveUpload` and `/api/health` use it. `@vercel/blob` 2.8 authenticates with
+  OIDC when `BLOB_STORE_ID` is set (documented in its types), else the token. Health now reports
+  `vercel-blob (oidc)` / `vercel-blob (token)`. `docs/DEPLOY-VERCEL.md` updated.
+- Local unchanged (`uploads: "disk"`); tsc + eslint clean. Pushed to `main` (live) — this deploy also picks up
+  the new Blob env vars, so no manual Redeploy needed.
+- **Don't press "Revoke Token"** until a live upload is confirmed working via OIDC.
