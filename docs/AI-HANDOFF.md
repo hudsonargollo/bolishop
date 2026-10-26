@@ -18,8 +18,8 @@ gold. Storefront + a full admin dashboard.
 - **Project root:** `/home/ahmad/zariera_project` (Ubuntu, since 2026-10-26; was `C:\Users\Gigalabs\Downloads\zariera` on Windows)
 - **Live site:** <https://zariera-project.vercel.app/> — **Vercel**, auto-deploys every push to GitHub `main`
   (repo `mian76951-ui/zariera_project`). Netlify is not used for the live site.
-- **Branches:** day-to-day work goes on **`dev`** (pushes → Vercel Preview only). `main` = live; it gets
-  `dev` merged in only when the owner says to go live (see §12).
+- **Branches:** since 2026-10-26 (later the same day) all work is done **directly on `main`** and every push
+  goes live (owner's choice). The old `dev` branch is fully merged and no longer used.
 - **Owner/developer:** Muhammad Ahmad Waseem (communicates in Roman Urdu)
 - **Audience:** Pakistan; COD + online payment (PayFast / Safepay); dropshipping via Leopards / TCS.
 
@@ -257,9 +257,9 @@ There is also one real earlier test order **`ZR-G2MACF-8SX`** ("hamza") — the 
 - Never fabricate authentic product photos; never log into the client's personal accounts.
 - Keep colors on-brand (maroon `#5b1a2b`, gold `#c39a4e`, cream `#f4e8d5`); dark mode must not clash.
 - **Every action an AI takes on this project must be logged in §14 (Session log) of this file** (user request, 2026-10-02).
-- **Work on the `dev` branch; never push to `main` without the owner's go-ahead** — Vercel deploys `main`
-  straight to the live site. Owner's plan (2026-10-26): finish the whole project on `dev` (commit + push
-  there freely; Vercel only makes Preview deploys for it), then merge `dev` → `main` once at the end to go live.
+- **Work directly on `main`; every push goes live** (Vercel Production) — owner's decision, 2026-10-26, replacing
+  the short-lived `dev`-branch plan. So: test locally (tsc, eslint, browser) *before* every push, and tell the
+  owner each push is going live.
 
 ---
 
@@ -979,3 +979,12 @@ didn't feel they were saving. Wanted a heavy, premium look that makes the saving
 scroll), product page desktop + mobile, dark mode (cards + deal panel), cart with 2 sale items (Rs 700 + 400 =
 "saving Rs 1,100"), checkout summary (same), buy-now ×2 ("saving Rs 1,400"); no console errors; tsc + eslint clean.
 Test cart cleared afterwards. On `dev` only — not live.
+
+### 2026-10-26 — Back to working on `main`; dev merged and pushed live (Claude)
+- Owner asked whether the local site was connected to the live Neon DB. It isn't: `DATABASE_URL`/`DIRECT_URL`
+  = `localhost:5433` (Prisma + `inet_server_addr()` confirmed); `NEON_DIRECT_URL` is read by no code — it was
+  only used for the one-time copy. Owner may delete that line from `.env` (then re-add it for a future copy).
+- Owner then chose: **"dev ka kaam main mein merge karo aur aage se seedha main par kaam aur push karo, har push
+  live jaye."** → checked `dev`'s Preview build (`7ac6bf6`) had succeeded, `git merge --ff-only origin/dev` on
+  `main` (feb25f6, ea587ea, 7ac6bf6 — handoff notes + the premium sale display), §1/§12 updated, pushed `main`
+  → Vercel Production. Local checkout is now on `main`; `dev` left on GitHub (fully merged, unused).
