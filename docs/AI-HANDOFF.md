@@ -1003,3 +1003,7 @@ Test cart cleared afterwards. On `dev` only — not live.
 - Local unchanged (`uploads: "disk"`); tsc + eslint clean. Pushed to `main` (live) — this deploy also picks up
   the new Blob env vars, so no manual Redeploy needed.
 - **Don't press "Revoke Token"** until a live upload is confirmed working via OIDC.
+- **Owner confirmed (2026-10-26):** "Maine live admin mein photo upload karke dekha, upload ho gaya." → live
+  admin image upload works through Vercel Blob. Revoking the read-write token is optional (the SDK uses OIDC
+  when `BLOB_STORE_ID` is set); if revoked, upload one photo again to re-check. A test upload that wasn't saved
+  leaves an unused file in the store (Storage → zariera-uploads → Manage Blobs) — harmless, can be deleted.
