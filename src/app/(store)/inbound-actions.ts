@@ -4,7 +4,16 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit, TOO_MANY } from "@/lib/rate-limit";
 import { sendContactNotification } from "@/lib/email";
-import { PIECE_TYPES, FINISHES, BUDGETS } from "@/lib/custom-request";
+import { randomBytes } from "node:crypto";
+import {
+  PIECE_TYPES,
+  FINISHES,
+  BUDGETS,
+  MAX_REFERENCE_PHOTOS,
+  MAX_REFERENCE_BYTES,
+  REFERENCE_PHOTOS_HEADING,
+} from "@/lib/custom-request";
+import { saveUpload, sniffImage, type ImageExt } from "@/lib/uploads";
 
 export type InboundState = { ok?: boolean; error?: string; values?: Record<string, string> };
 
@@ -89,6 +98,30 @@ export async function sendCustomRequest(_prev: InboundState, formData: FormData)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message, values };
   const d = parsed.data;
 
+  // Optional reference photos: real type from the bytes, never the client's word.
+  const files = formData.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length > MAX_REFERENCE_PHOTOS) {
+    return { error: `Please attach up to ${MAX_REFERENCE_PHOTOS} photos.`, values };
+  }
+  const images: { bytes: Buffer; ext: ImageExt }[] = [];
+  for (const file of files) {
+    if (file.size > MAX_REFERENCE_BYTES) return { error: "Each photo must be under 3 MB.", values };
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const ext = sniffImage(bytes);
+    if (!ext) return { error: "Photos must be JPG, PNG, WEBP or AVIF images.", values };
+    images.push({ bytes, ext });
+  }
+  const photoUrls: string[] = [];
+  try {
+    for (const img of images) {
+      const filename = `ref-${randomBytes(6).toString("hex")}-${Date.now()}.${img.ext}`;
+      photoUrls.push(await saveUpload(filename, img.bytes, img.ext, "references"));
+    }
+  } catch (err) {
+    console.error("[custom] could not save reference photos:", err);
+    return { error: "We couldn't upload your photos right now. Please try again, or send them on WhatsApp.", values };
+  }
+
   const subject = `Custom design: ${d.pieceType}`;
   const message = [
     `Piece: ${d.pieceType}`,
@@ -97,6 +130,7 @@ export async function sendCustomRequest(_prev: InboundState, formData: FormData)
     `Needed by: ${d.neededBy || "Flexible"}`,
     "",
     d.details,
+    ...(photoUrls.length ? ["", REFERENCE_PHOTOS_HEADING, ...photoUrls] : []),
   ].join("\n");
 
   try {

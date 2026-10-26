@@ -10,6 +10,9 @@ export const UPLOAD_ROOT = path.resolve(
 );
 export const PRODUCT_UPLOAD_DIR = path.join(UPLOAD_ROOT, "products");
 
+/** "products" = admin product images; "references" = customers' custom-design photos. */
+export type UploadFolder = "products" | "references";
+
 export const IMAGE_TYPES = {
   jpg: "image/jpeg",
   png: "image/png",
@@ -57,11 +60,20 @@ async function blobStore() {
   return getStore({ name: BLOB_STORE, consistency: "strong" });
 }
 
-/** Saves an uploaded image and returns the URL to store on the product. */
-export async function saveUpload(filename: string, bytes: Buffer, ext: ImageExt): Promise<string> {
+// Netlify Blobs keys: product images keep their original bare names.
+const blobKey = (folder: UploadFolder, filename: string) =>
+  folder === "products" ? filename : `${folder}/${filename}`;
+
+/** Saves an uploaded image and returns its public URL. */
+export async function saveUpload(
+  filename: string,
+  bytes: Buffer,
+  ext: ImageExt,
+  folder: UploadFolder = "products"
+): Promise<string> {
   if (vercelBlobConfigured()) {
     const { put } = await import("@vercel/blob");
-    const blob = await put(`products/${filename}`, bytes, {
+    const blob = await put(`${folder}/${filename}`, bytes, {
       access: "public",
       contentType: IMAGE_TYPES[ext],
       addRandomSuffix: false,
@@ -74,33 +86,53 @@ export async function saveUpload(filename: string, bytes: Buffer, ext: ImageExt)
   if (!onNetlify()) {
     try {
       const { mkdir, writeFile } = await import("node:fs/promises");
-      await mkdir(PRODUCT_UPLOAD_DIR, { recursive: true });
-      await writeFile(path.join(PRODUCT_UPLOAD_DIR, filename), bytes);
-      return `/uploads/products/${filename}`;
+      const dir = path.join(UPLOAD_ROOT, folder);
+      await mkdir(dir, { recursive: true });
+      await writeFile(path.join(dir, filename), bytes);
+      return `/uploads/${folder}/${filename}`;
     } catch (err) {
       console.warn("[upload] disk write failed, trying Netlify Blobs:", err);
     }
   }
   const store = await blobStore();
   const ab = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  await store.set(filename, ab);
-  return `/uploads/products/${filename}`;
+  await store.set(blobKey(folder, filename), ab);
+  return `/uploads/${folder}/${filename}`;
 }
 
-export async function readUpload(filename: string): Promise<Buffer | null> {
+export async function readUpload(filename: string, folder: UploadFolder = "products"): Promise<Buffer | null> {
   if (!onNetlify()) {
     try {
       const { readFile } = await import("node:fs/promises");
-      return await readFile(path.join(PRODUCT_UPLOAD_DIR, filename));
+      return await readFile(path.join(UPLOAD_ROOT, folder, filename));
     } catch {
       /* not on disk — maybe stored in Blobs */
     }
   }
   try {
     const store = await blobStore();
-    const data = await store.get(filename, { type: "arrayBuffer" });
+    const data = await store.get(blobKey(folder, filename), { type: "arrayBuffer" });
     return data ? Buffer.from(data) : null;
   } catch {
     return null; // Blobs not available (local dev without Netlify)
+  }
+}
+
+/** HTTP response for a disk / Netlify-stored upload (served by /uploads/<folder>/[file]). */
+export async function uploadResponse(file: string, folder: UploadFolder): Promise<Response> {
+  if (!SAFE_UPLOAD_NAME.test(file)) return new Response("Not found", { status: 404 });
+  try {
+    const data = await readUpload(file, folder);
+    if (!data) return new Response("Not found", { status: 404 });
+    const ext = file.split(".").pop() as ImageExt;
+    return new Response(new Uint8Array(data), {
+      headers: {
+        "Content-Type": IMAGE_TYPES[ext],
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch {
+    return new Response("Not found", { status: 404 });
   }
 }

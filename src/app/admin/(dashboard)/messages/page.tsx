@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { DbBanner } from "@/components/admin/db-banner";
 import { toggleMessageHandled } from "./actions";
+import { splitReferencePhotos } from "@/lib/custom-request";
 
 export const metadata = { title: "Messages" };
 
@@ -22,6 +23,37 @@ async function load() {
   } catch {
     return { dbConnected: false, messages: [], subscribers: [], subscriberCount: 0 };
   }
+}
+
+// Custom-design requests may end with reference photos — show them as thumbnails.
+function MessageBody({ message }: { message: string }) {
+  const { text, photos } = splitReferencePhotos(message);
+  return (
+    <>
+      <p className="mt-2 whitespace-pre-wrap text-sm text-ink/85">{text}</p>
+      {photos.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-2 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-gold-deep">
+            Reference photos ({photos.length}) — click to open full size
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {photos.map((src, i) => (
+              <a
+                key={src}
+                href={src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block h-24 w-24 overflow-hidden rounded-lg border border-[var(--line-strong)] transition hover:border-gold"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- customer upload, any size */}
+                <img src={src} alt={`Reference photo ${i + 1}`} className="h-full w-full object-cover" loading="lazy" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 export default async function AdminMessagesPage() {
@@ -71,7 +103,7 @@ export default async function AdminMessagesPage() {
                       </button>
                     </form>
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-ink/85">{m.message}</p>
+                  <MessageBody message={m.message} />
                 </li>
               ))}
             </ul>

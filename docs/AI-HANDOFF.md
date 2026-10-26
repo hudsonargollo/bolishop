@@ -1036,3 +1036,35 @@ dragged max to 3,300 → 6; Bracelets link keeps filters, bounds re-scope to 2,4
 removing a chip / Clear all; DB counts match (6 / 3 / 10 / 4). Mobile 375px (no horizontal scroll, drawer,
 footer button), dark mode (sidebar + drawer + chips). tsc + eslint (whole `src`) clean. Note: Browser-pane
 screenshots lag while the pane is hidden — verify with DOM checks or show the pane first.
+
+### 2026-10-26 — Custom page: real reference-photo upload (Claude)
+**Request:** the custom-design form only had a line "Have a reference photo? Reply to our email…". Owner wanted a
+premium picker: tap → phone gallery, laptop → file/folder dialog.
+
+**What changed**
+- New `src/components/reference-photos.tsx` on the custom form (replaces that line): gold dashed drop-zone
+  ("Add reference photos", "Tap to choose from your gallery" on phones / "Click to browse — or drag & drop" on
+  desktop, "Choose photos"), then 3-up thumbnails with number badge, × remove and an "Add more" tile, "2 of 3
+  photos added". `accept="image/*"` without `capture` → phones offer Photo Library / Camera / Files.
+  Up to **3** photos. The browser re-encodes each to JPEG ≤ 1600 px (fixes EXIF rotation, strips location
+  metadata; e.g. 956 KB → 148 KB, 1.7 MB PNG → 259 KB) and puts them in a hidden `<input name="photos">` via
+  `DataTransfer`; re-synced after React resets the form, so photos survive a validation error.
+  WhatsApp link kept as "Prefer WhatsApp? Send photos there instead" (only when a number is set).
+- `sendCustomRequest` (`app/(store)/inbound-actions.ts`): after field validation — max 3 files, ≤ 3 MB each,
+  type from magic bytes (`sniffImage`); saved with `saveUpload(…, "references")` as
+  `ref-<random>-<ts>.<ext>`; URLs appended to the saved message under "Reference photos:" (also in the
+  owner's email). **No DB schema change.**
+- `lib/uploads.ts`: `UploadFolder` ("products" | "references") for Vercel Blob path / disk dir / Netlify key
+  (product keys unchanged); shared `uploadResponse()`; new route `/uploads/references/[file]`.
+- `lib/custom-request.ts`: limits + `splitReferencePhotos()` — only our own `/uploads/references/…` or
+  `*.public.blob.vercel-storage.com/references/…` URLs count. Admin → **Messages** shows them as clickable
+  thumbnails.
+- `next.config.ts`: `experimental.serverActions.bodySizeLimit = "4mb"` (default 1 MB; Vercel max 4.5 MB).
+
+**Tested (local):** picker → 2 photos shrunk + previews + hidden field; server rejects 4 files (1.8 MB body
+accepted → new limit works), a fake .jpg (HTML bytes) and a 3.2 MB file, each with the form values and photos
+kept; nothing saved on those (0 DB rows, no files). Save/serve path via a tsx script: saved to
+`uploads/references`, GET 200 image/jpeg, bad name 404, parser accepts own/Blob URLs and ignores others; test
+file removed. Mobile 375px no overflow. tsc + eslint clean.
+**Not tested end-to-end:** a successful submit — local SMTP is configured, so it would email the store inbox.
+Owner should send one real request on the live site (with a photo) and check Admin → Messages.

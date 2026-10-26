@@ -5,6 +5,7 @@ import Link from "next/link";
 import { sendCustomRequest, type InboundState } from "@/app/(store)/inbound-actions";
 import { PIECE_TYPES, FINISHES, BUDGETS } from "@/lib/custom-request";
 import { useToast } from "@/components/ui/toast";
+import { ReferencePhotos } from "@/components/reference-photos";
 
 const field =
   "w-full rounded-lg border border-[var(--line-strong)] bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.2)]";
@@ -102,18 +103,9 @@ export function CustomDesignForm({ whatsappUrl }: { whatsappUrl?: string }) {
           placeholder="Names or initials to engrave, ring size or chain length, stones, style you like, the occasion…"
           className={field}
         />
-        <p className="mt-1.5 text-xs text-muted">
-          Have a reference photo?{" "}
-          {whatsappUrl ? (
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="text-gold-deep underline">
-              Send it on WhatsApp
-            </a>
-          ) : (
-            "Reply to our email with it"
-          )}{" "}
-          after submitting.
-        </p>
       </div>
+
+      <ReferencePhotos resyncKey={state} whatsappUrl={whatsappUrl} />
 
       {state.error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>

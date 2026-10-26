@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
 
+  // Custom-design requests carry up to 3 reference photos (shrunk in the browser
+  // to ~0.2–0.6 MB each). Default is 1 MB; Vercel caps request bodies at 4.5 MB.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "4mb",
+    },
+  },
+
   // Make sure the Prisma query engine binaries ship with the server functions.
   outputFileTracingIncludes: {
     "/**": ["./node_modules/.prisma/client/**/*"],
