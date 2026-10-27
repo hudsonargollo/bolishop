@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { sampleCategories, sampleProducts } from "./sample-data";
+import { searchCatalog, type SearchCategory, type SearchResult } from "./search-engine";
 import type { CategoryView, ProductView, ProductFilters, ShopFacets } from "./types";
 
 // The storefront reads through these functions. Each attempts a real Prisma
@@ -105,14 +106,6 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
         ...(material ? { material } : {}),
         ...(onSale ? { compareAtPrice: { gt: prisma.product.fields.price } } : {}),
         ...(inStock ? { stock: { gt: 0 } } : {}),
-        ...(q
-          ? {
-              OR: [
-                { name: { contains: q, mode: "insensitive" as const } },
-                { description: { contains: q, mode: "insensitive" as const } },
-              ],
-            }
-          : {}),
         ...(minPrice != null || maxPrice != null
           ? {
               price: {
@@ -125,11 +118,42 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
       include: { category: { select: { name: true, slug: true } } },
       orderBy,
     });
-    return products.map(toView);
+    return applyQuery(products.map(toView), q, sort);
   } catch (err) {
     warnFallback(err);
     return filterSample(filters);
   }
+}
+
+/** Text filter for the shop's `?q=`: the same typo-tolerant matching as /search,
+ *  ranked by relevance unless a price sort was picked. */
+function applyQuery(list: ProductView[], q: string | undefined, sort: ProductFilters["sort"]): ProductView[] {
+  if (!q) return list;
+  const cats = new Map<string, SearchCategory>();
+  for (const p of list) {
+    const c = cats.get(p.category.slug);
+    if (c) c.count++;
+    else cats.set(p.category.slug, { id: p.category.slug, name: p.category.name, slug: p.category.slug, description: null, count: 1 });
+  }
+  const found = searchCatalog(q, list, [...cats.values()]).products;
+  if (sort === "price-asc") return found.sort((a, b) => a.price - b.price);
+  if (sort === "price-desc") return found.sort((a, b) => b.price - a.price);
+  return found;
+}
+
+// ---------- Search ----------
+
+/** Full /search answer: ranked pieces plus how the query was read. All
+ *  categories are passed (even empty ones) so "necklaces" can say "coming soon". */
+export async function searchStore(
+  q: string
+): Promise<SearchResult & { categories: SearchCategory[]; all: ProductView[] }> {
+  const [products, categoryList] = await Promise.all([getProducts(), getCategories()]);
+  const categories = categoryList.map((c) => ({
+    ...c,
+    count: products.filter((p) => p.category.slug === c.slug).length,
+  }));
+  return { ...searchCatalog(q, products, categories), categories, all: products };
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductView | null> {
@@ -251,17 +275,8 @@ function filterSample(filters: ProductFilters): ProductView[] {
   if (inStock) list = list.filter((p) => p.stock > 0);
   if (minPrice != null) list = list.filter((p) => p.price >= minPrice);
   if (maxPrice != null) list = list.filter((p) => p.price <= maxPrice);
-  if (q) {
-    const needle = q.toLowerCase();
-    list = list.filter(
-      (p) =>
-        p.name.toLowerCase().includes(needle) ||
-        (p.description?.toLowerCase().includes(needle) ?? false)
-    );
-  }
-
   if (sort === "price-asc") list.sort((a, b) => a.price - b.price);
   else if (sort === "price-desc") list.sort((a, b) => b.price - a.price);
 
-  return list;
+  return applyQuery(list, q, sort);
 }

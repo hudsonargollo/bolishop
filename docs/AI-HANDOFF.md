@@ -1131,3 +1131,42 @@ error, unknown email → "Check your inbox" (no mail sent). Mobile 375px + dark 
     (`LOW_STOCK`), or "Out of stock".
   - Sale cards are unchanged apart from the shared material line and divider.
 - Tested: desktop 4-col + mobile 2-col, light + dark; the availability line stays on one line at 375px; tsc + eslint clean.
+
+### 2026-10-27 — Smart search: typo-tolerant engine, instant suggestions, new /search page (Claude)
+- **Owner screenshot:** live `/search?q=necklecs` showed "0 results" with a plain box. Searching "rings" found
+  nothing either. Cause: the old search was a Prisma `contains` on the name and description, so "rings" never matched "… Ring",
+  typos failed, and category, material, Urdu words and price phrases were ignored.
+- **New `lib/search-engine.ts` (pure, in-memory ranking):**
+  - Folds accents (Trèfle → trefle), singularises (rings → ring), and drops stop words.
+  - Corrects typos with Damerau-Levenshtein distance (1 edit for 3–6 letters, 2 edits for 7+), towards words in names,
+    categories and materials. Typo fixes are returned as `corrections` for "Showing results for …".
+  - Maps Urdu and everyday words (`ALIASES`: angoothi/challa → ring, haar/pendant/locket → necklace,
+    jhumka/bali/tops → earring, kangan/kara/churi → bangle, sona → gold …). `CATEGORY_HINTS` maps bangle → Bracelets.
+  - Reads price phrases ("under 3000", "below 3k", "2000-3000", "above 2500", "3000 tak / se kam") and sale words
+    (sale, discount, offer, deal).
+  - Weights fields: name 5, category 6, material 3, description and specs 1. A category word gives every piece in that
+    category a score, and pieces whose name also says it rank first ("bangles" lists the Bangles before the chain bracelets).
+  - Results must match every word. If nothing does, it falls back to the closest pieces (`partial`). Ties go to
+    in-stock pieces first, then featured.
+- **`catalog.ts`:** the shop's `?q=` filter (`getProducts`, including the sample-data fallback) now uses the engine through
+  `applyQuery`; the Prisma `contains` OR was removed. New `searchStore(q)` returns the ranked result, all categories with live
+  counts (so empty ones can say "coming soon") and the full product list.
+- **New `GET /api/search?q=`:** returns the top 6 pieces (photo, price, % off, sold out), total, category and correction.
+- **New `components/search/search-box.tsx`:**
+  - Pill input with a rotating "Try 'rings' / 'under 3000' …" placeholder, a spinner, a clear button and a gold submit.
+  - A 180ms debounced suggestion panel shows "Showing results for", "All Rings · 7 pieces →" (or "Necklaces are coming soon"
+    linking to the notify page), product rows and "See all N results".
+  - ↑/↓/Enter/Esc work and the highlighted row scrolls into view. Browser autocomplete is off; without JS it is a plain GET form.
+- **`/search` page redesigned:**
+  - The hero has the box plus "Popular" chips (categories with counts, On sale, and "Under Rs X", which is the cheapest price
+    + 600 rounded to 500).
+  - The results header shows the count, the correction, and tags for the category, sale and price range, plus "Shop all {category} →".
+  - With no results there is a premium card ("Our necklaces are coming soon" with a notify button, or "Nothing matches"
+    with search tips) and a custom-design link.
+  - "You may love" / "Trending now" picks (featured, in stock) appear when nothing matched or nothing was typed.
+  - The hero has no `overflow-hidden` and is `z-30`, so the suggestion panel hangs over the sale ribbons.
+- Tested on the local data:
+  - necklecs → Necklaces coming soon, rngs/rings/angoothi → 7 rings, braclet/kangan/bangles → 8 bracelets with bangles first.
+  - butterfy → 1, "rings under 2300" → 5, "ring on sale" → 3, "2000-3000 bracelet" → 3, xyzabc → no-results card.
+  - Keyboard nav works, mobile 375px has no horizontal overflow, light and dark checked; tsc and eslint are clean.
+- If the catalog grows past a few thousand pieces, move the ranking to Postgres (`pg_trgm`) instead of loading every product.
