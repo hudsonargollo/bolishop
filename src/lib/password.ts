@@ -5,7 +5,7 @@ import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
 // as well as from the app.
 
 // Minimum length for customer passwords (register, checkout sign-up, reset).
-export const MIN_PASSWORD = 8;
+export { MIN_PASSWORD } from "./auth-rules";
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");

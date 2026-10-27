@@ -53,7 +53,7 @@ export function AuthShell({
       </Link>
 
       {/* Floating card */}
-      <div className="relative w-full max-w-md">
+      <div className="animate-auth-in relative w-full max-w-md">
         <div className="relative overflow-hidden rounded-2xl border border-[rgba(230,205,139,0.5)] bg-cream p-8 shadow-[0_40px_90px_-40px_rgba(0,0,0,0.7)] sm:p-10">
           {/* Inner gold hairline frame */}
           <div className="pointer-events-none absolute inset-3 rounded-xl border border-[rgba(169,126,48,0.28)]" />

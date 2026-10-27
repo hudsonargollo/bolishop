@@ -1071,3 +1071,37 @@ Owner should send one real request on the live site (with a photo) and check Adm
 - **Owner confirmed (2026-10-27):** "Maine live par photo ke saath custom request bheji, Admin Messages mein photo
   dikh rahi hai." → full live flow works (picker → upload to Vercel Blob `references/` → Admin → Messages
   thumbnails). The owner's test request can be marked handled / ignored.
+
+### 2026-10-27 — Premium sign-in / sign-up cards with live validation (Claude)
+**Request:** login/register looked plain and gave weak feedback; owner wanted regex validation, a "zig-zag"
+shake on wrong entries, red fields on errors, green on correct input, and a more premium look.
+
+**What changed**
+- `src/lib/auth-rules.ts` (new, dependency-free, used by browser **and** server): `EMAIL_RE`, `NAME_RE`
+  (letters in any script incl. Urdu + space . ' -), `emailError`, `nameError`, `newPasswordError`,
+  `passwordRules` (8+ chars, a letter, a number) and `passwordStrength` (0–4). `MIN_PASSWORD` now lives here
+  (`lib/password.ts` re-exports it).
+- `src/components/auth/auth-field.tsx` (new kit): `AuthField` (icon input — mail / user / lock — gold focus
+  ring; **green border + ✓** when valid, **red border + ⓘ + message** when invalid; show/hide password),
+  `PasswordStrength` (4-bar meter Weak/Fair/Good/Strong + live checklist), `AuthAlert`, `AuthSubmit`
+  (maroon gradient pill, gold sheen on hover, spinner while pending), `SecureNote`, `useShake`, and
+  `useAuthForm` (values, touched, client check on submit → shake + focus first bad field; server
+  `fields` → those inputs turn red until edited; optional clear-on-error). Forms keep `action={formAction}`
+  as the no-JS fallback; with JS, `onSubmit` validates and dispatches in a transition (no React form reset).
+- `globals.css`: `--color-ok` (#2f7d5c / dark #6cc59a) and `--color-bad` (#b3261e / dark #f08a80) tokens,
+  `.animate-shake` ("no" shake) and `.animate-auth-in` (card rise-in on `AuthShell`), both off for reduced motion.
+- Rewritten on the kit: `login-form.tsx` (Forgot password? in the label row, "New to ZARIERA?" divider +
+  outlined "Create an account"), `register-form.tsx` (name/email/password + strength meter),
+  `password-reset-forms.tsx` (forgot + reset; "Check your inbox" success card). Toasts for these errors were
+  dropped (the in-card alert + red fields + shake replace them). Admin login untouched (still `PasswordInput`).
+- `auth-actions.ts`: `AuthState.fields`; register/login/forgot/reset use the shared rules (zod removed there).
+  Login failure → "Incorrect email or password. Please try again." with **both** fields red (never says which);
+  duplicate email on register → email red. **New accounts / password resets now need a letter and a number**
+  (existing passwords still sign in). Checkout's optional account creation still only checks 8+ chars.
+
+**Tested (local):** empty sign-in → both red + messages + shake + focus; `ahmad@gmail` → red on blur, `.com`
+→ green ✓; wrong credentials (non-existent email) → alert, both red, password cleared, shake; correct
+credentials of a temporary local test customer → redirected to `/account` ("Hello, QA"), signed out, test
+customer deleted (local DB back to 7 customers); register: "Ahmad123" → letters-only error, password meter
+Weak → Strong with checklist, duplicate email → only email red (no OTP email sent); forgot: invalid email →
+error, unknown email → "Check your inbox" (no mail sent). Mobile 375px + dark mode. tsc + eslint clean.

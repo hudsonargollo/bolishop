@@ -2,9 +2,9 @@
 
 import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, verifyPassword, MIN_PASSWORD } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
+import { emailError, nameError, newPasswordError } from "@/lib/auth-rules";
 import { startCustomerSession, endCustomerSession, safeNext } from "@/lib/customer-auth";
 import { clientIp, rateLimit, TOO_MANY } from "@/lib/rate-limit";
 import { createToken, readToken } from "@/lib/session-token";
@@ -14,7 +14,14 @@ import { siteUrl } from "@/lib/site";
 import { requireCustomer } from "@/lib/customer-auth";
 import { issueCode, verifyCode, setPending, getPending, clearPending, RESEND_COOLDOWN_S } from "@/lib/otp";
 
-export type AuthState = { error?: string; ok?: boolean; message?: string; values?: Record<string, string> };
+export type AuthState = {
+  error?: string;
+  /** Inputs to mark as wrong (red) next to the error, e.g. ["email", "password"]. */
+  fields?: string[];
+  ok?: boolean;
+  message?: string;
+  values?: Record<string, string>;
+};
 
 // React 19 resets a form after its server action runs, so on an error the
 // shopper would have to retype everything. Echo the (non-secret) fields back;
@@ -24,14 +31,11 @@ function keep(formData: FormData, keys: string[]): Record<string, string> {
 }
 
 
-const registerSchema = z.object({
-  name: z.string().trim().min(2, "Please enter your name").max(120),
-  email: z.string().trim().email("Enter a valid email").max(200),
-  password: z
-    .string()
-    .min(MIN_PASSWORD, `Password must be at least ${MIN_PASSWORD} characters`)
-    .max(200),
-});
+// First failing field (same rules the form shows live — lib/auth-rules.ts).
+function firstFieldError(checks: [string, string | null][]): AuthState | null {
+  const bad = checks.find(([, err]) => err);
+  return bad ? { error: bad[1]!, fields: [bad[0]] } : null;
+}
 
 const MINUTE = 60_000;
 
@@ -45,20 +49,25 @@ export async function registerAction(prev: AuthState, formData: FormData): Promi
 async function register(_prev: AuthState, formData: FormData): Promise<AuthState> {
   if (!rateLimit(`register:${await clientIp()}`, 8, 60 * MINUTE)) return { error: TOO_MANY };
 
-  const parsed = registerSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const invalid = firstFieldError([
+    ["name", nameError(name)],
+    ["email", emailError(email)],
+    ["password", newPasswordError(password)],
+  ]);
+  if (invalid) return invalid;
 
-  const { name, email, password } = parsed.data;
   const e = email.toLowerCase();
   const payload = { name, passwordHash: hashPassword(password), next: safeNext(formData.get("next")) };
 
   try {
     if (await prisma.customer.findUnique({ where: { email: e }, select: { id: true } })) {
-      return { error: "An account with this email already exists. Please sign in or reset your password." };
+      return {
+        error: "An account with this email already exists. Please sign in or reset your password.",
+        fields: ["email"],
+      };
     }
     const sent = await issueCode(e, "register", payload);
     if (!sent.ok) {
@@ -193,7 +202,10 @@ export async function loginAction(prev: AuthState, formData: FormData): Promise<
 async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  if (!email || !password) return { error: "Please enter your email and password." };
+  if (!email || !password) {
+    return { error: "Please enter your email and password.", fields: [!email ? "email" : "password"] };
+  }
+  if (emailError(email)) return { error: emailError(email)!, fields: ["email"] };
 
   const ip = await clientIp();
   if (!rateLimit(`login:${ip}`, 20, 15 * MINUTE) || !rateLimit(`login:${email}`, 8, 15 * MINUTE)) {
@@ -209,7 +221,8 @@ async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
   }
 
   if (!customer || !verifyPassword(password, customer.passwordHash)) {
-    return { error: "Invalid email or password." };
+    // Don't reveal which one was wrong — mark both.
+    return { error: "Incorrect email or password. Please try again.", fields: ["email", "password"] };
   }
 
   await startCustomerSession({ id: customer.id, email: customer.email, name: customer.name });
@@ -239,7 +252,7 @@ export async function requestPasswordResetAction(prev: AuthState, formData: Form
 
 async function requestReset(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!z.string().email().safeParse(email).success) return { error: "Enter a valid email." };
+  if (emailError(email)) return { error: emailError(email)!, fields: ["email"] };
   if (!rateLimit(`reset:${await clientIp()}`, 5, 30 * MINUTE) || !rateLimit(`reset:${email}`, 3, 30 * MINUTE)) {
     return { error: TOO_MANY };
   }
@@ -274,9 +287,8 @@ export async function resetPasswordAction(_prev: AuthState, formData: FormData):
 
   const token = String(formData.get("token") ?? "");
   const password = String(formData.get("password") ?? "");
-  if (password.length < MIN_PASSWORD) {
-    return { error: `Password must be at least ${MIN_PASSWORD} characters.` };
-  }
+  const weak = newPasswordError(password);
+  if (weak) return { error: weak, fields: ["password"] };
 
   const data = readToken<ResetToken>("reset", token);
   const invalid = { error: "This reset link is invalid or has expired. Please request a new one." };

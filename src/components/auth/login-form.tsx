@@ -1,29 +1,24 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
 import { loginAction, type AuthState } from "@/app/(store)/auth-actions";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { PasswordInput } from "@/components/auth/password-input";
-import { useToast } from "@/components/ui/toast";
+import { AuthAlert, AuthField, AuthSubmit, SecureNote, useAuthForm } from "@/components/auth/auth-field";
+import { emailError } from "@/lib/auth-rules";
 
 const initial: AuthState = {};
 
-const input =
-  "w-full rounded-lg border border-[var(--line-strong)] bg-surface px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.22)]";
-
-const label = "mb-1.5 block text-xs font-medium uppercase tracking-[0.12em] text-muted";
-
-const submitBtn =
-  "w-full rounded-full bg-maroon px-6 py-3.5 text-sm font-medium uppercase tracking-[0.14em] text-light shadow-[0_14px_34px_-14px_rgba(91,26,43,0.7)] transition hover:bg-maroon-2 disabled:opacity-60";
+const VALIDATE = {
+  email: emailError,
+  password: (v: string) => (v ? null : "Please enter your password"),
+};
 
 export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(loginAction, initial);
-  const toast = useToast();
-
-  useEffect(() => {
-    if (state.error) toast.error(state.error);
-  }, [state, toast]);
+  const [formRef, f] = useAuthForm(formAction, state, VALIDATE, { clearOnError: ["password"] });
+  const email = f.field("email");
+  const password = f.field("password", { positive: false });
 
   return (
     <AuthShell>
@@ -32,37 +27,57 @@ export function LoginForm({ next }: { next?: string }) {
         <p className="mt-1 text-sm text-muted">Sign in to continue shopping.</p>
       </div>
 
-      <form action={formAction} className="mt-7 space-y-4">
+      <form ref={formRef} action={formAction} onSubmit={f.onSubmit} noValidate className="mt-7 space-y-5">
         {next && <input type="hidden" name="next" value={next} />}
-        <div>
-          <label className={label}>Email</label>
-          <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" defaultValue={state.values?.email} className={input} />
-        </div>
-        <div>
-          <label className={label}>Password</label>
-          <PasswordInput name="password" required autoComplete="current-password" className={input} />
-          <p className="mt-1.5 text-right text-xs">
-            <Link href="/forgot-password" className="text-gold-deep hover:underline">
+        <AuthField
+          name="email"
+          label="Email"
+          icon="mail"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={f.value("email")}
+          onChange={(v) => f.set("email", v)}
+          onBlur={() => f.blur("email")}
+          {...email}
+        />
+        <AuthField
+          name="password"
+          label="Password"
+          icon="lock"
+          password
+          autoComplete="current-password"
+          placeholder="Your password"
+          value={f.value("password")}
+          onChange={(v) => f.set("password", v)}
+          onBlur={() => f.blur("password")}
+          labelAside={
+            <Link href="/forgot-password" className="text-xs font-medium text-gold-deep hover:underline">
               Forgot password?
             </Link>
-          </p>
+          }
+          {...password}
+        />
+
+        {state.error && <AuthAlert>{state.error}</AuthAlert>}
+
+        <div>
+          <AuthSubmit pending={pending} label="Sign In" pendingLabel="Signing in…" />
+          <SecureNote />
         </div>
-
-        {state.error && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
-        )}
-
-        <button type="submit" disabled={pending} className={submitBtn}>
-          {pending ? "Signing in…" : "Sign In"}
-        </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted">
-        New to ZARIERA?{" "}
-        <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="font-medium text-gold-deep hover:underline">
-          Create an account
-        </Link>
-      </p>
+      <div className="mt-6 flex items-center gap-3 text-[0.65rem] uppercase tracking-[0.2em] text-muted">
+        <span className="h-px flex-1 bg-[var(--line)]" />
+        New to ZARIERA?
+        <span className="h-px flex-1 bg-[var(--line)]" />
+      </div>
+      <Link
+        href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
+        className="mt-4 block rounded-full border border-gold/60 py-3 text-center text-sm font-semibold uppercase tracking-[0.14em] text-gold-deep transition hover:border-gold hover:bg-gold/10"
+      >
+        Create an account
+      </Link>
     </AuthShell>
   );
 }

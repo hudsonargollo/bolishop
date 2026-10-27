@@ -30,6 +30,10 @@
   --color-muted: #8a6f63;      /* muted text on light */
   --color-muted-dark: #dcc6ad; /* muted text on dark maroon */
 
+  /* Form feedback — jewel-tone emerald / garnet that sit well with maroon + gold */
+  --color-ok: #2f7d5c;
+  --color-bad: #b3261e;
+
   /* Fonts (wired via next/font in layout.tsx) */
   --font-serif: var(--font-cormorant), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-jost), system-ui, sans-serif;
@@ -70,6 +74,8 @@
   --color-surface: #241319;
   --color-muted: #b99f90;
   --color-muted-dark: #e0cbb2;
+  --color-ok: #6cc59a;
+  --color-bad: #f08a80;
 
   --background: #160c10;
   --foreground: #f3e7d6;
@@ -291,7 +297,29 @@ p {
   outline: none;
 }
 
+/* Auth forms: "no" shake on a wrong entry, soft rise-in for the card */
+@keyframes auth-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-9px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(2px); }
+}
+.animate-shake {
+  animation: auth-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes auth-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.animate-auth-in {
+  animation: auth-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .animate-shake, .animate-auth-in { animation: none; }
   .animate-marquee, .animate-marquee-slow, .animate-marquee-slow-rev, .animate-floaty,
   .animate-chatin, .animate-chatpulse { animation: none; }
   .sale-shine::after { animation: none; display: none; }
