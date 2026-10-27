@@ -1068,3 +1068,6 @@ kept; nothing saved on those (0 DB rows, no files). Save/serve path via a tsx sc
 file removed. Mobile 375px no overflow. tsc + eslint clean.
 **Not tested end-to-end:** a successful submit — local SMTP is configured, so it would email the store inbox.
 Owner should send one real request on the live site (with a photo) and check Admin → Messages.
+- **Owner confirmed (2026-10-27):** "Maine live par photo ke saath custom request bheji, Admin Messages mein photo
+  dikh rahi hai." → full live flow works (picker → upload to Vercel Blob `references/` → Admin → Messages
+  thumbnails). The owner's test request can be marked handled / ignored.
