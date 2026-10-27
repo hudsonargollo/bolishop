@@ -1118,3 +1118,16 @@ error, unknown email → "Check your inbox" (no mail sent). Mobile 375px + dark 
   sparkles (spins in) + "HIDE"; `aria-pressed` + label. Used by `AuthField` (sign-in / sign-up / reset) and
   `PasswordInput` (admin sign-in; input padding widened to `pr-24`).
 - Tested: register + admin login, both states, light + dark; tsc + eslint clean.
+
+### 2026-10-27 — Premium look for regular (non-sale) product cards (Claude)
+- **Owner:** sale cards look fine, but regular cards look plain, with empty space between the name and the
+  price. **Change (`components/product-card.tsx`, used on home, shop, carousel and related products):**
+  - Every card shows the **material** under the name (small gold gem icon, one line), and a thin gold **ornament
+    divider** (line, diamond, line) above the price. The fixed 2-line name height was dropped; the price block stays pinned to the bottom.
+  - **Regular cards only:** the photo gets a hairline gold "display-case" frame with diamond corners, which tightens
+    on hover. The body has a soft surface-to-cream gradient. The price is `text-lg` semibold, and under it is an
+    availability line that mirrors the sale card's "Save Rs …" line: "In stock · Won't tarnish" (the second part is
+    hidden on phones so it stays on one line), "Only N left" in red with a pulsing dot when stock ≤ 5
+    (`LOW_STOCK`), or "Out of stock".
+  - Sale cards are unchanged apart from the shared material line and divider.
+- Tested: desktop 4-col + mobile 2-col, light + dark; the availability line stays on one line at 375px; tsc + eslint clean.
