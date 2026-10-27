@@ -1105,3 +1105,16 @@ credentials of a temporary local test customer → redirected to `/account` ("He
 customer deleted (local DB back to 7 customers); register: "Ahmad123" → letters-only error, password meter
 Weak → Strong with checklist, duplicate email → only email red (no OTP email sent); forgot: invalid email →
 error, unknown email → "Check your inbox" (no mail sent). Mobile 375px + dark mode. tsc + eslint clean.
+
+### 2026-10-27 — Autofill colour fix + gem "Show / Hide" password toggle (Claude)
+- **Bug (owner screenshot, live register page, dark mode):** fields filled by Chrome's autofill turned
+  slate/sky-blue. Cause: the browser's `:-webkit-autofill` background. **Fix (site-wide, `globals.css`):**
+  `input/textarea/select:-webkit-autofill` (+ `:hover`, `:focus`) and `input:autofill` get a
+  `0 0 0 1000px var(--color-surface) inset` shadow + `-webkit-text-fill-color: var(--color-ink)`, so autofilled
+  fields keep the theme colours in light and dark mode (checkout, contact, admin forms too). Verified the rules
+  load; real autofill can't be triggered by automation — owner to confirm in Chrome.
+- **Owner wanted something other than the usual eye icon.** New `RevealToggle` (`components/auth/password-input.tsx`):
+  a small pill — hidden: gold outline, gem outline + "SHOW"; revealed: gold gradient fill, filled gem with
+  sparkles (spins in) + "HIDE"; `aria-pressed` + label. Used by `AuthField` (sign-in / sign-up / reset) and
+  `PasswordInput` (admin sign-in; input padding widened to `pr-24`).
+- Tested: register + admin login, both states, light + dark; tsc + eslint clean.

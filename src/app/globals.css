@@ -92,6 +92,25 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Browser autofill paints filled fields light blue (Chrome) — keep the site's own
+   surface + ink colors instead. The UA background can't be overridden, so a large
+   inset shadow covers it. (Separate rules: one unknown selector drops a whole list.) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-ink);
+  caret-color: var(--color-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+input:autofill {
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  -webkit-text-fill-color: var(--color-ink);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

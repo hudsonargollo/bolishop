@@ -2,7 +2,41 @@
 
 import { useState } from "react";
 
-// Password field with a show/hide (eye) toggle.
+/** Show / hide control for password fields: a small gold pill with a gem that
+ *  "lights up" when the password is revealed (instead of the usual eye). */
+export function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={shown}
+      aria-label={shown ? "Hide password" : "Show password"}
+      className={`group/reveal mr-2 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border pl-2 pr-2.5 text-[0.6rem] font-bold uppercase tracking-[0.18em] transition-all duration-300 ${
+        shown
+          ? "border-gold bg-gradient-to-r from-gold-hi via-gold to-gold-deep text-maroon shadow-[0_6px_16px_-8px_rgba(169,126,48,0.9)]"
+          : "border-gold/45 bg-transparent text-gold-deep hover:border-gold hover:bg-gold/10"
+      }`}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        aria-hidden="true"
+        className={`h-4 w-4 transition-transform duration-500 ${shown ? "rotate-[360deg] scale-110" : "group-hover/reveal:scale-110"}`}
+      >
+        <path d="M7 5h10l4 5-9 10L3 10z" fill={shown ? "currentColor" : "none"} fillOpacity={shown ? 0.22 : 0} />
+        <path d="M3 10h18M10 5 8.6 10 12 20l3.4-10L14 5" />
+        {shown && <path d="M20.5 2.5v2.6M19.2 3.8h2.6M3.5 2.8v1.8M2.6 3.7h1.8" strokeWidth="1.4" />}
+      </svg>
+      <span className="w-7 text-left">{shown ? "Hide" : "Show"}</span>
+    </button>
+  );
+}
+
+// Password field with the show / hide toggle (used by the admin sign-in).
 export function PasswordInput({
   name,
   autoComplete,
@@ -26,29 +60,11 @@ export function PasswordInput({
         required={required}
         minLength={minLength}
         autoComplete={autoComplete}
-        className={`${className} pr-11`}
+        className={`${className} pr-24`}
       />
-      <button
-        type="button"
-        onClick={() => setShow((s) => !s)}
-        aria-label={show ? "Hide password" : "Show password"}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition hover:text-gold-deep"
-      >
-        {show ? (
-          // eye-off
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9.9 5.1A9.5 9.5 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-2.2 3M6.6 6.6A17 17 0 0 0 2 12s4 7 10 7a9.5 9.5 0 0 0 3.9-.8" />
-            <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-            <path d="M3 3l18 18" />
-          </svg>
-        ) : (
-          // eye
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        )}
-      </button>
+      <span className="absolute right-0 top-1/2 -translate-y-1/2">
+        <RevealToggle shown={show} onToggle={() => setShow((s) => !s)} />
+      </span>
     </div>
   );
 }

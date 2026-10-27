@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { passwordRules, passwordStrength } from "@/lib/auth-rules";
+import { RevealToggle } from "./password-input";
 
 // Shared building blocks for the sign-in / sign-up / reset cards: icon inputs
 // with live valid / invalid states, the "no" shake, an error banner, the
@@ -211,26 +212,7 @@ export function AuthField({
         )}
         {status === "invalid" && <AlertIcon className="mr-1 h-5 w-5 text-bad" />}
         {password ? (
-          <button
-            type="button"
-            onClick={() => setShow((s) => !s)}
-            aria-label={show ? "Hide password" : "Show password"}
-            className="mr-2 flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-sand/60 hover:text-gold-deep"
-          >
-            <Svg className="h-[1.1rem] w-[1.1rem]">
-              {show ? (
-                <>
-                  <path d="M9.9 5.1A9.5 9.5 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-2.2 3M6.6 6.6A17 17 0 0 0 2 12s4 7 10 7a9.5 9.5 0 0 0 3.9-.8" />
-                  <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" />
-                </>
-              ) : (
-                <>
-                  <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
-                  <circle cx="12" cy="12" r="3" />
-                </>
-              )}
-            </Svg>
-          </button>
+          <RevealToggle shown={show} onToggle={() => setShow((v) => !v)} />
         ) : (
           <span className="w-3" />
         )}
