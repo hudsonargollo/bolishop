@@ -4,7 +4,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { ProductFormState } from "@/app/admin/(dashboard)/products/actions";
+import type { ProductFormState } from "@/app/[tenant]/admin/(dashboard)/products/actions";
 import type { AdminProductDetail } from "@/lib/admin-data";
 import { useToast } from "@/components/ui/toast";
 

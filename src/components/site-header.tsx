@@ -19,7 +19,7 @@ const NAV = [
 const iconBtn =
   "relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] bg-surface/60 text-maroon transition hover:border-gold hover:bg-gold/10 hover:text-gold-deep dark:text-ink";
 
-export function SiteHeader() {
+export function SiteHeader({ tenant, currencySymbol }: { tenant?: any; currencySymbol?: string } = {}) {
   const pathname = usePathname();
 
   const isActive = (href: string) =>

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim().slice(0, 100) ?? "";
   if (!q) return NextResponse.json({ total: 0, products: [], category: null, correction: null, partial: false });
 
-  const r = await searchStore(q);
+  const r = await searchStore('zariera', q);
   return NextResponse.json({
     total: r.products.length,
     partial: r.partial,

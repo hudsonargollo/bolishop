@@ -3,8 +3,17 @@ const pkr = new Intl.NumberFormat("en-PK", {
   maximumFractionDigits: 0,
 });
 
-export function formatPrice(amount: number): string {
-  return `Rs ${pkr.format(Math.round(amount))}`;
+export function formatPrice(amount: number, currency = "PKR"): string {
+  if (currency === "PKR") return `Rs ${pkr.format(Math.round(amount))}`;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(Math.round(amount));
+  } catch {
+    return `${currency} ${Math.round(amount)}`;
+  }
 }
 
 export function discountPercent(price: number, compareAt: number | null | undefined): number | null {

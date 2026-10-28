@@ -46,16 +46,16 @@ function productLine(p: ProductView): string {
   }\n  ${desc}`;
 }
 
-async function storeKnowledge(): Promise<{
+async function storeKnowledge(tenantId: string): Promise<{
   text: string;
   settings: StoreSettings;
   products: ProductView[];
   categories: { name: string; slug: string }[];
 }> {
   const [settings, products, categories] = await Promise.all([
-    getStoreSettings(),
-    getProducts({ sort: "newest" }),
-    getCategories(),
+    getStoreSettings(tenantId),
+    getProducts(tenantId, { sort: "newest" }),
+    getCategories(tenantId),
   ]);
   const c = settings.contact;
   const s = settings.shipping;
@@ -308,8 +308,8 @@ function basicReply(
 
 // ---------------------------------------------------------------------------
 
-export async function answerCustomer(history: ChatTurn[]): Promise<ChatReply> {
-  const { text, settings, products, categories } = await storeKnowledge();
+export async function answerCustomer(tenantId: string, history: ChatTurn[]): Promise<ChatReply> {
+  const { text, settings, products, categories } = await storeKnowledge(tenantId);
   const last = history[history.length - 1]?.content ?? "";
 
   if (aiEnabled()) {

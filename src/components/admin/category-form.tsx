@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { createCategory } from "@/app/admin/(dashboard)/categories/actions";
+import { createCategory } from "@/app/[tenant]/admin/(dashboard)/categories/actions";
 import { useToast } from "@/components/ui/toast";
 
 const input =

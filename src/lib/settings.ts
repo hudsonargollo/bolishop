@@ -60,15 +60,18 @@ function merge(saved: Partialish | null | undefined): StoreSettings {
 // Shared across requests (every store page reads settings in the layout);
 // refreshed by tag when Admin → Settings is saved.
 const loadStored = unstable_cache(
-  async () => (await prisma.setting.findUnique({ where: { key: KEY } }))?.value ?? null,
-  ["store-settings-v1"],
+  async (tenantId: string) =>
+    (await prisma.setting.findUnique({
+      where: { tenantId_key: { tenantId, key: KEY } },
+    }))?.value ?? null,
+  ["store-settings-v2"],
   { tags: [SETTINGS_TAG], revalidate: 600 }
 );
 
 /** Current store settings. Never throws. */
-export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
+export const getStoreSettings = cache(async (tenantId: string): Promise<StoreSettings> => {
   try {
-    return merge((await loadStored()) as Partialish | undefined);
+    return merge((await loadStored(tenantId)) as Partialish | undefined);
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -76,15 +79,18 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
 
 /** Saves one section of the settings (merged over what's stored). */
 export async function saveStoreSettings<K extends keyof StoreSettings>(
+  tenantId: string,
   section: K,
   value: StoreSettings[K]
 ): Promise<void> {
-  const row = await prisma.setting.findUnique({ where: { key: KEY } });
+  const row = await prisma.setting.findUnique({
+    where: { tenantId_key: { tenantId, key: KEY } },
+  });
   const current = (row?.value as Partialish | undefined) ?? {};
   const next = { ...current, [section]: value };
   await prisma.setting.upsert({
-    where: { key: KEY },
-    create: { key: KEY, value: next as object },
+    where: { tenantId_key: { tenantId, key: KEY } },
+    create: { tenantId, key: KEY, value: next as object },
     update: { value: next as object },
   });
   refreshSettings();

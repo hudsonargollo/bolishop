@@ -28,7 +28,7 @@ const TRUST = [
   "Rust-free & Hypoallergenic",
 ];
 
-export function SiteFooter({ settings }: { settings: StoreSettings }) {
+export function SiteFooter({ settings, tenant, currencySymbol }: { settings: StoreSettings; tenant?: any; currencySymbol?: string }) {
   const CONTACT = {
     ...settings.contact,
     ...settings.social,

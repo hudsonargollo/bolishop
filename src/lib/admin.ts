@@ -21,7 +21,7 @@ export async function verifyCredentials(
   const e = email.trim().toLowerCase();
 
   try {
-    const user = await prisma.user.findUnique({ where: { email: e } });
+    const user = await prisma.user.findFirst({ where: { email: e } });
     if (!user || !verifyPassword(password, user.passwordHash)) return { ok: false, reason: "invalid" };
     // Claim the account for this device (retires every other session).
     const { updatedAt } = await prisma.user.update({
@@ -45,7 +45,7 @@ export async function checkAdmin(): Promise<
   const session = await getAdminSession();
   if (!session) return { session: null, reason: null };
   try {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: { email: session.email },
       select: { role: true, updatedAt: true },
     });
@@ -71,6 +71,6 @@ export async function requireAdmin(): Promise<AdminSession> {
 /** After the caller rewrote their own admin row (e.g. new password): keep this
  *  device signed in under the new stamp; every other device is signed out. */
 export async function refreshAdminSession(email: string): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { email }, select: { role: true, updatedAt: true } });
+  const user = await prisma.user.findFirst({ where: { email }, select: { role: true, updatedAt: true } });
   if (user) await startSession(email, user.role, user.updatedAt.getTime());
 }

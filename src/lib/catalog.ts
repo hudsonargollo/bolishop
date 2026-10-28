@@ -33,16 +33,19 @@ function warnFallback(err: unknown) {
 
 type Snapshot = { products: ProductView[]; categories: CategoryView[] };
 
-// Cross-request cache (5 min safety net; normally refreshed by tag).
+/** Per-request tenant cache of the active catalog. */
 const loadSnapshot = unstable_cache(
-  async (): Promise<Snapshot> => {
+  async (tenantId: string): Promise<Snapshot> => {
     const [products, categories] = await Promise.all([
       prisma.product.findMany({
-        where: { active: true },
+        where: { active: true, tenantId },
         include: { category: { select: { name: true, slug: true } } },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.category.findMany({ orderBy: { name: "asc" } }),
+      prisma.category.findMany({
+        where: { tenantId },
+        orderBy: { name: "asc" },
+      }),
     ]);
     return {
       products: products.map((p) => ({
@@ -58,32 +61,43 @@ const loadSnapshot = unstable_cache(
         images: p.images ?? [],
         featured: p.featured,
         category: p.category,
+        tenantId: p.tenantId,
       })),
-      categories: categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug, description: c.description })),
+      categories: categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        tenantId: c.tenantId,
+      })),
     };
   },
-  ["catalog-snapshot-v1"],
+  ["catalog-snapshot-v2"],
   { tags: [CATALOG_TAG], revalidate: 300 }
 );
 
 /** Per request: one snapshot, however many catalog calls the page makes. */
-const getSnapshot = cache(async (): Promise<Snapshot> => {
+const getSnapshot = cache(async (tenantId: string): Promise<Snapshot> => {
   try {
-    return await loadSnapshot();
+    return await loadSnapshot(tenantId);
   } catch (err) {
     warnFallback(err);
+    // sample data is global fallback (no tenantId); mark it so callers know.
     return { products: sampleProducts, categories: sampleCategories };
   }
 });
 
 // ---------- Categories ----------
 
-export async function getCategories(): Promise<CategoryView[]> {
-  return (await getSnapshot()).categories;
+export async function getCategories(tenantId: string): Promise<CategoryView[]> {
+  return (await getSnapshot(tenantId)).categories;
 }
 
-export async function getCategoryBySlug(slug: string): Promise<CategoryView | null> {
-  return (await getSnapshot()).categories.find((c) => c.slug === slug) ?? null;
+export async function getCategoryBySlug(
+  tenantId: string,
+  slug: string
+): Promise<CategoryView | null> {
+  return (await getSnapshot(tenantId)).categories.find((c) => c.slug === slug) ?? null;
 }
 
 // ---------- Products ----------
@@ -91,9 +105,12 @@ export async function getCategoryBySlug(slug: string): Promise<CategoryView | nu
 const onSaleNow = (p: ProductView) => p.compareAtPrice != null && p.compareAtPrice > p.price;
 
 /** Newest first unless a price sort is picked; `q` ranks by relevance. */
-export async function getProducts(filters: ProductFilters = {}): Promise<ProductView[]> {
+export async function getProducts(
+  tenantId: string,
+  filters: ProductFilters = {}
+): Promise<ProductView[]> {
   const { categorySlug, q, minPrice, maxPrice, material, onSale, inStock, sort = "newest" } = filters;
-  const { products } = await getSnapshot();
+  const { products } = await getSnapshot(tenantId);
 
   let list = products.filter(
     (p) =>
@@ -121,19 +138,29 @@ function applyQuery(list: ProductView[], q: string): ProductView[] {
   return searchCatalog(q, list, [...cats.values()]).products;
 }
 
-export async function getProductBySlug(slug: string): Promise<ProductView | null> {
-  return (await getSnapshot()).products.find((p) => p.slug === slug) ?? null;
+export async function getProductBySlug(
+  tenantId: string,
+  slug: string
+): Promise<ProductView | null> {
+  return (await getSnapshot(tenantId)).products.find((p) => p.slug === slug) ?? null;
 }
 
 /** Featured pieces, newest first; the newest pieces when none are featured. */
-export async function getFeaturedProducts(limit = 4): Promise<ProductView[]> {
-  const { products } = await getSnapshot();
+export async function getFeaturedProducts(
+  tenantId: string,
+  limit = 4
+): Promise<ProductView[]> {
+  const { products } = await getSnapshot(tenantId);
   const featured = products.filter((p) => p.featured);
   return (featured.length ? featured : products).slice(0, limit);
 }
 
-export async function getRelatedProducts(product: ProductView, limit = 4): Promise<ProductView[]> {
-  const { products } = await getSnapshot();
+export async function getRelatedProducts(
+  tenantId: string,
+  product: ProductView,
+  limit = 4
+): Promise<ProductView[]> {
+  const { products } = await getSnapshot(tenantId);
   return products.filter((p) => p.category.slug === product.category.slug && p.id !== product.id).slice(0, limit);
 }
 
@@ -142,9 +169,10 @@ export async function getRelatedProducts(product: ProductView, limit = 4): Promi
 /** Full /search answer: ranked pieces plus how the query was read. All
  *  categories are passed (even empty ones) so "necklaces" can say "coming soon". */
 export async function searchStore(
+  tenantId: string,
   q: string
 ): Promise<SearchResult & { categories: SearchCategory[]; all: ProductView[] }> {
-  const { products, categories: list } = await getSnapshot();
+  const { products, categories: list } = await getSnapshot(tenantId);
   const categories = list.map((c) => ({
     ...c,
     count: products.filter((p) => p.category.slug === c.slug).length,
@@ -156,8 +184,11 @@ export async function searchStore(
 
 /** Category counts (whole store) + price bounds, materials, sale and stock counts
  *  for the current category scope. */
-export async function getShopFacets(categorySlug?: string): Promise<ShopFacets> {
-  const { products: rows, categories } = await getSnapshot();
+export async function getShopFacets(
+  tenantId: string,
+  categorySlug?: string
+): Promise<ShopFacets> {
+  const { products: rows, categories } = await getSnapshot(tenantId);
 
   const scoped = categorySlug ? rows.filter((r) => r.category.slug === categorySlug) : rows;
   const prices = (scoped.length ? scoped : rows).map((r) => r.price);

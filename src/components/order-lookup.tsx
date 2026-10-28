@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { lookupOrderAction, type LookupState } from "@/app/(store)/account/orders/actions";
+import { lookupOrderAction, type LookupState } from "@/app/[tenant]/(store)/account/orders/actions";
 import { StatusBadge } from "@/components/status-badge";
 import { formatPrice } from "@/lib/format";
 

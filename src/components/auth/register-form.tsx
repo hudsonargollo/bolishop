@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { registerAction, type AuthState } from "@/app/(store)/auth-actions";
+import { registerAction, type AuthState } from "@/app/[tenant]/(store)/auth-actions";
 import { AuthShell } from "@/components/auth/auth-shell";
 import {
   AuthAlert,

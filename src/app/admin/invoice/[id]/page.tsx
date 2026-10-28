@@ -18,10 +18,10 @@ const PAYMENT_LABEL: Record<string, string> = {
 
 // Printable invoice + packing slip. Lives outside the dashboard layout so it
 // prints on a clean A4 page (sidebar/header not included).
-export default async function InvoicePage({ params }: PageProps<"/admin/invoice/[id]">) {
+export default async function InvoicePage({ params }: { params: Promise<{ tenant: string; id: string }> }) {
   await requireAdmin();
-  const { id } = await params;
-  const [order, settings] = await Promise.all([getAdminOrder(id), getStoreSettings()]);
+  const { tenant, id } = await params;
+  const [order, settings] = await Promise.all([getAdminOrder(tenant, id), getStoreSettings(tenant)]);
   if (!order) notFound();
 
   const date = new Date(order.createdAt).toLocaleDateString("en-PK", {

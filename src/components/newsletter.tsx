@@ -3,7 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { Emblem } from "./brand/emblem";
 import { useToast } from "@/components/ui/toast";
-import { subscribe, type InboundState } from "@/app/(store)/inbound-actions";
+import { subscribe, type InboundState } from "@/app/[tenant]/(store)/inbound-actions";
 
 const initial: InboundState = {};
 

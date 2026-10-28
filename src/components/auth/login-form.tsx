@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { loginAction, type AuthState } from "@/app/(store)/auth-actions";
+import { loginAction, type AuthState } from "@/app/[tenant]/(store)/auth-actions";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthAlert, AuthField, AuthSubmit, SecureNote, useAuthForm } from "@/components/auth/auth-field";
 import { emailError } from "@/lib/auth-rules";

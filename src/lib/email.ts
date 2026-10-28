@@ -3,8 +3,8 @@ import { formatPrice } from "./format";
 import { getStoreSettings } from "./settings";
 
 // Where owner alerts go: Admin → Settings → Notifications, else env.
-async function alertAddress(): Promise<string> {
-  const fromSettings = (await getStoreSettings()).notifications.orderEmail;
+async function alertAddress(tenantId: string): Promise<string> {
+  const fromSettings = (await getStoreSettings(tenantId)).notifications.orderEmail;
   return fromSettings || process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER || "";
 }
 
@@ -122,14 +122,14 @@ function escape(s: string): string {
 
 // Sends confirmation to the customer + notification to the store owner.
 // Never throws — email failures must not break checkout.
-export async function sendOrderEmails(o: OrderEmailData): Promise<void> {
+export async function sendOrderEmails(o: OrderEmailData, tenantId?: string): Promise<void> {
   if (!emailConfigured()) {
     console.warn("[email] SMTP not configured — skipping order emails.");
     return;
   }
 
   const from = process.env.MAIL_FROM || `ZARIERA <${process.env.SMTP_USER}>`;
-  const adminTo = await alertAddress();
+  const adminTo = await alertAddress(tenantId || "zariera");
 
   try {
     const transport = getTransport();
@@ -187,7 +187,7 @@ export async function sendContactNotification(m: {
 }): Promise<void> {
   if (!emailConfigured()) return; // message is still saved in the admin "Messages" page
   const from = process.env.MAIL_FROM || `ZARIERA <${process.env.SMTP_USER}>`;
-  const to = await alertAddress();
+  const to = await alertAddress((m as any).tenantId || "zariera");
   try {
     await getTransport().sendMail({
       from,

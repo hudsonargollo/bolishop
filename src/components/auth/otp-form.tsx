@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
-import type { OtpState } from "@/app/(store)/auth-actions";
+import type { OtpState } from "@/app/[tenant]/(store)/auth-actions";
 import { useToast } from "@/components/ui/toast";
 
 type Action = (prev: OtpState, fd: FormData) => Promise<OtpState>;

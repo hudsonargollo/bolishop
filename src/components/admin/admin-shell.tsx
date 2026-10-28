@@ -6,7 +6,7 @@ import { Emblem } from "@/components/brand/emblem";
 import { AdminNav } from "./admin-nav";
 import { AdminMobileNav } from "./admin-mobile-nav";
 import { OrderNotifications } from "./order-notifications";
-import { logoutAction } from "@/app/admin/login/actions";
+import { logoutAction } from "@/app/[tenant]/admin/login/actions";
 
 const STORAGE_KEY = "zariera-admin-collapsed";
 

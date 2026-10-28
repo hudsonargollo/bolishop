@@ -1,5 +1,5 @@
 {
-  "name": "zariera",
+  "name": "bolistore",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:create-admin": "tsx --env-file=.env prisma/create-admin.ts",
+    "db:create-tenant": "tsx prisma/create-tenant.ts",
     "db:copy": "tsx prisma/copy-data.ts"
   },
   "prisma": {

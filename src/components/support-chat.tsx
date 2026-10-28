@@ -90,7 +90,7 @@ type Msg = { from: "bot" | "user"; text: string };
 
 
 
-export function SupportChat({ settings }: { settings: StoreSettings }) {
+export function SupportChat({ settings, tenant, currencySymbol }: { settings: StoreSettings; tenant?: { displayName?: string | null }; currencySymbol?: string }) {
   const FAQS = buildFaqs(settings);
   const WA = whatsappUrl(settings);
   const HAS_WHATSAPP = Boolean(WA);
@@ -100,7 +100,7 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
   const [input, setInput] = useState("");
   const greeting: Msg = {
     from: "bot",
-    text: "Hi! 👋 I'm the ZARIERA assistant. Ask me anything — products, prices, delivery, payment, returns or your order. You can write in English or Urdu.",
+    text: `Hi! 👋 I'm the ${(tenant?.displayName || "store")} assistant. Ask me anything — products, prices, delivery, payment, returns or your order. You can write in English or Urdu.`
   };
   const [msgs, setMsgs] = useState<Msg[]>([greeting]);
   const [typing, setTyping] = useState(false);
@@ -173,6 +173,7 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          tenantSlug: tenant?.displayName?.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
           messages: next.slice(-12).map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text })),
         }),
       });
@@ -239,7 +240,7 @@ export function SupportChat({ settings }: { settings: StoreSettings }) {
                 </svg>
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-serif text-lg font-semibold leading-tight">ZARIERA Support</p>
+                <p className="font-serif text-lg font-semibold leading-tight">{(tenant?.displayName || "Store") + " Support"}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 text-xs text-light/75">
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                   Instant answers 24/7 · team replies {CONTACT.hours}

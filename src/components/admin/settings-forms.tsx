@@ -12,7 +12,7 @@ import {
   changePassword,
   addTeamMember,
   type SettingsState,
-} from "@/app/admin/(dashboard)/settings/actions";
+} from "@/app/[tenant]/admin/(dashboard)/settings/actions";
 
 type Action = (prev: SettingsState, fd: FormData) => Promise<SettingsState>;
 

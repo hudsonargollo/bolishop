@@ -7,7 +7,7 @@ import { verifySafepaySignature } from "@/lib/payments";
 // X-SFPY-SIGNATURE verifies with SAFEPAY_WEBHOOK_SECRET. The order is matched
 // by the tracker saved at checkout (Order.paymentRef), falling back to an
 // order reference if Safepay echoes one.
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const raw = await request.text();
   let body: {
     type?: string;

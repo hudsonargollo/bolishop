@@ -6,7 +6,7 @@ import {
   requestPasswordResetAction,
   resetPasswordAction,
   type AuthState,
-} from "@/app/(store)/auth-actions";
+} from "@/app/[tenant]/(store)/auth-actions";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthAlert, AuthField, AuthSubmit, PasswordStrength, useAuthForm } from "@/components/auth/auth-field";
 import { emailError, newPasswordError } from "@/lib/auth-rules";

@@ -5,7 +5,7 @@ import { createToken, readToken } from "./session-token";
 // Storefront customer sessions — separate cookie AND separate signing key from
 // the admin session (see ./session-token).
 
-const COOKIE = "zariera_customer";
+const COOKIE = "bolistore_customer";
 const TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 export type CustomerSession = {

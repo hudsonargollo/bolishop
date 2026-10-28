@@ -11,6 +11,7 @@ const whatsapp = clean(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER).replace(/[^0-9]/
 const phone = clean(process.env.NEXT_PUBLIC_CONTACT_PHONE);
 
 export const CONTACT = {
+  /** Default fallback when tenant has no saved settings. */
   /** International format, digits only (e.g. 923001234567). */
   whatsapp,
   whatsappUrl: whatsapp ? `https://wa.me/${whatsapp}` : "",

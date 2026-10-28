@@ -2,9 +2,11 @@ import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const TENANT_SLUG = "zariera";
+
 const categories: { name: string; slug: string; description: string }[] = [
   { name: "Necklaces", slug: "necklaces", description: "Statement and everyday necklaces." },
-  { name: "Rings", slug: "rings", description: "Solitaires, bands and cocktail rings." },
+  { name: "Rings", slug: "rings", description: "Solitaire, bands and cocktail rings." },
   { name: "Earrings", slug: "earrings", description: "Studs, hoops and drops." },
   { name: "Bracelets", slug: "bracelets", description: "Bangles, tennis and charm bracelets." },
 ];
@@ -87,26 +89,36 @@ const products: SeedProduct[] = [
 ];
 
 async function main() {
-  console.log("🌱 Seeding ZARIERA database...");
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: TENANT_SLUG },
+    update: {},
+    create: {
+      slug: TENANT_SLUG,
+      name: "ZARIERA",
+      displayName: "ZARIERA",
+      tagline: "Every Jewel Tells a Story",
+      currency: "PKR",
+      active: true,
+    },
+  });
+  console.log(`✔ tenant "${tenant.slug}" (${tenant.id})`);
 
-  // Categories
   const categoryIdBySlug = new Map<string, string>();
   for (const c of categories) {
     const cat = await prisma.category.upsert({
-      where: { slug: c.slug },
+      where: { tenantId_slug: { tenantId: tenant.id, slug: c.slug } },
       update: { name: c.name, description: c.description },
-      create: c,
+      create: { ...c, tenantId: tenant.id },
     });
     categoryIdBySlug.set(c.slug, cat.id);
   }
   console.log(`  ✔ ${categories.length} categories`);
 
-  // Products
   for (const p of products) {
     const categoryId = categoryIdBySlug.get(p.categorySlug);
     if (!categoryId) continue;
     await prisma.product.upsert({
-      where: { slug: p.slug },
+      where: { tenantId_slug: { tenantId: tenant.id, slug: p.slug } },
       update: {
         name: p.name,
         description: p.description,
@@ -127,10 +139,48 @@ async function main() {
         stock: p.stock,
         featured: p.featured,
         categoryId,
+        tenantId: tenant.id,
       },
     });
   }
   console.log(`  ✔ ${products.length} products`);
+
+  // Default settings (merged over env defaults in the app).
+  const defaultSettings = {
+    contact: {
+      email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "",
+      phone: process.env.NEXT_PUBLIC_CONTACT_PHONE || "",
+      whatsapp: (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "").replace(/[^0-9]/g, ""),
+      city: process.env.NEXT_PUBLIC_CONTACT_CITY || "Lahore, Pakistan",
+      hours: process.env.NEXT_PUBLIC_CONTACT_HOURS || "Mon–Sat, 11am – 8pm",
+    },
+    social: {
+      instagram: process.env.NEXT_PUBLIC_INSTAGRAM_URL || "",
+      facebook: process.env.NEXT_PUBLIC_FACEBOOK_URL || "",
+      tiktok: process.env.NEXT_PUBLIC_TIKTOK_URL || "",
+    },
+    shipping: {
+      flatFee: Number(process.env.NEXT_PUBLIC_FLAT_SHIPPING || 500),
+      freeThreshold: Number(process.env.NEXT_PUBLIC_FREE_SHIPPING_THRESHOLD || 50000),
+      deliveryTime: "3–5 working days",
+    },
+    announcements: [
+      "Free shipping on orders over {freeThreshold}",
+      "Cash on Delivery available nationwide",
+      "Premium stainless steel — rust-free & hypoallergenic",
+      "Complimentary care guidance with every order",
+      "Secure checkout",
+    ],
+    inventory: { lowStockThreshold: 5 },
+    notifications: { orderEmail: process.env.ADMIN_NOTIFY_EMAIL || "" },
+  };
+
+  await prisma.setting.upsert({
+    where: { tenantId_key: { tenantId: tenant.id, key: "store" } },
+    update: { value: defaultSettings as any },
+    create: { tenantId: tenant.id, key: "store", value: defaultSettings as any },
+  });
+  console.log("  ✔ default settings");
 
   console.log("✅ Seed complete.");
 }

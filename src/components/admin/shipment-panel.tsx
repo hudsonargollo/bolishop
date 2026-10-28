@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import { bookShipmentAction } from "@/app/admin/(dashboard)/orders/actions";
+import { bookShipmentAction } from "@/app/[tenant]/admin/(dashboard)/orders/actions";
 import { useToast } from "@/components/ui/toast";
 
 export function ShipmentPanel({

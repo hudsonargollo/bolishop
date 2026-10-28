@@ -14,7 +14,7 @@ export type AdminStats = {
   monthRevenue: number;
 };
 
-export async function getAdminStats(): Promise<AdminStats> {
+export async function getAdminStats(tenantId: string): Promise<AdminStats> {
   try {
     const monthStart = new Date();
     monthStart.setDate(1);
@@ -22,16 +22,16 @@ export async function getAdminStats(): Promise<AdminStats> {
 
     const [products, orders, pendingOrders, revenueAgg, customers, lowStock, monthOrders, monthRevAgg] =
       await Promise.all([
-        prisma.product.count(),
-        prisma.order.count(),
-        prisma.order.count({ where: { status: "PENDING" } }),
-        prisma.order.aggregate({ _sum: { total: true }, where: { status: { not: "CANCELLED" } } }),
-        prisma.customer.count(),
-        prisma.product.count({ where: { stock: { lte: (await getStoreSettings()).inventory.lowStockThreshold } } }),
-        prisma.order.count({ where: { createdAt: { gte: monthStart } } }),
+        prisma.product.count({ where: { tenantId: { equals: tenantId } } }),
+        prisma.order.count({ where: { tenantId: { equals: tenantId } } }),
+        prisma.order.count({ where: { tenantId: { equals: tenantId }, status: "PENDING" } }),
+        prisma.order.aggregate({ _sum: { total: true }, where: { tenantId: { equals: tenantId }, status: { not: "CANCELLED" } } }),
+        prisma.customer.count({ where: { tenantId: { equals: tenantId } } }),
+        prisma.product.count({ where: { tenantId: { equals: tenantId }, stock: { lte: (await getStoreSettings(tenantId)).inventory.lowStockThreshold } } }),
+        prisma.order.count({ where: { tenantId: { equals: tenantId }, createdAt: { gte: monthStart } } }),
         prisma.order.aggregate({
           _sum: { total: true },
-          where: { status: { not: "CANCELLED" }, createdAt: { gte: monthStart } },
+          where: { tenantId: { equals: tenantId }, status: { not: "CANCELLED" }, createdAt: { gte: monthStart } },
         }),
       ]);
     return {
@@ -63,12 +63,13 @@ export type AdminCustomerRow = {
   createdAt: string;
 };
 
-export async function getAdminCustomers(): Promise<{
+export async function getAdminCustomers(tenantId: string): Promise<{
   dbConnected: boolean;
   customers: AdminCustomerRow[];
 }> {
   try {
     const rows = await prisma.customer.findMany({
+      where: { tenantId: { equals: tenantId } },
       include: { orders: { select: { total: true, status: true } } },
       orderBy: { createdAt: "desc" },
     });
@@ -99,12 +100,13 @@ export type AdminCategoryRow = {
   products: number;
 };
 
-export async function getAdminCategories(): Promise<{
+export async function getAdminCategories(tenantId: string): Promise<{
   dbConnected: boolean;
   categories: AdminCategoryRow[];
 }> {
   try {
     const rows = await prisma.category.findMany({
+      where: { tenantId: { equals: tenantId } },
       include: { _count: { select: { products: true } } },
       orderBy: { name: "asc" },
     });
@@ -134,12 +136,13 @@ export type AdminProduct = {
   category: string;
 };
 
-export async function getAdminProducts(): Promise<{
+export async function getAdminProducts(tenantId: string): Promise<{
   dbConnected: boolean;
   products: AdminProduct[];
 }> {
   try {
     const rows = await prisma.product.findMany({
+      where: { tenantId: { equals: tenantId } },
       include: { category: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     });
@@ -178,9 +181,9 @@ export type AdminProductDetail = {
   categoryId: string;
 };
 
-export async function getAdminProduct(id: string): Promise<AdminProductDetail | null> {
+export async function getAdminProduct(tenantId: string, id: string): Promise<AdminProductDetail | null> {
   try {
-    const p = await prisma.product.findUnique({ where: { id } });
+    const p = await prisma.product.findFirst({ where: { tenantId: { equals: tenantId }, id } });
     if (!p) return null;
     return {
       id: p.id,
@@ -203,9 +206,10 @@ export async function getAdminProduct(id: string): Promise<AdminProductDetail | 
   }
 }
 
-export async function getCategoriesForSelect(): Promise<{ id: string; name: string }[]> {
+export async function getCategoriesForSelect(tenantId: string): Promise<{ id: string; name: string }[]> {
   try {
     return await prisma.category.findMany({
+      where: { tenantId: { equals: tenantId } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });
@@ -226,12 +230,13 @@ export type AdminOrderRow = {
   itemCount: number;
 };
 
-export async function getAdminOrders(): Promise<{
+export async function getAdminOrders(tenantId: string): Promise<{
   dbConnected: boolean;
   orders: AdminOrderRow[];
 }> {
   try {
     const rows = await prisma.order.findMany({
+      where: { tenantId: { equals: tenantId } },
       include: { items: { select: { quantity: true } } },
       orderBy: { createdAt: "desc" },
     });
@@ -254,10 +259,10 @@ export async function getAdminOrders(): Promise<{
   }
 }
 
-export async function getAdminOrder(id: string) {
+export async function getAdminOrder(tenantId: string, id: string) {
   try {
     const o = await prisma.order.findUnique({
-      where: { id },
+      where: { tenantId, id },
       include: { items: true },
     });
     if (!o) return null;
@@ -425,14 +430,14 @@ function ymd(d: Date): string {
 
 // Continuous daily series (zero-filled) for the Amazon/Keepa-style zoomable chart.
 export async function getSalesDaily(
-  days = 365
+  tenantId: string,days = 365
 ): Promise<{ dbConnected: boolean; points: DailyPoint[] }> {
   try {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() - (days - 1));
     const orders = await prisma.order.findMany({
-      where: { status: { not: "CANCELLED" }, createdAt: { gte: start } },
+      where: { tenantId: { equals: tenantId }, status: { not: "CANCELLED" }, createdAt: { gte: start } },
       select: { createdAt: true, total: true },
     });
     const map = new Map<string, { revenue: number; orders: number }>();
@@ -469,7 +474,7 @@ export type StorePerformance = {
   totalProducts: number;
 };
 
-export async function getStorePerformance(): Promise<StorePerformance> {
+export async function getStorePerformance(tenantId: string): Promise<StorePerformance> {
   try {
     const [totalOrders, delivered, paid, totalProducts, inStock] = await Promise.all([
       prisma.order.count({ where: { status: { not: "CANCELLED" } } }),
@@ -500,10 +505,10 @@ export async function getStorePerformance(): Promise<StorePerformance> {
   }
 }
 
-export async function getSalesInsights(): Promise<SalesInsights> {
+export async function getSalesInsights(tenantId: string): Promise<SalesInsights> {
   try {
     const orders = await prisma.order.findMany({
-      where: { status: { not: "CANCELLED" } },
+      where: { tenantId: { equals: tenantId }, status: { not: "CANCELLED" } },
       select: { createdAt: true, total: true },
     });
     const rows: Row[] = orders.map((o) => ({ t: o.createdAt, v: Number(o.total) }));
@@ -538,14 +543,14 @@ export type TopProduct = {
 };
 export type CategorySales = { name: string; revenue: number; share: number };
 
-export async function getSalesBreakdown(): Promise<{
+export async function getSalesBreakdown(tenantId: string): Promise<{
   dbConnected: boolean;
   topProducts: TopProduct[];
   categories: CategorySales[];
 }> {
   try {
     const items = await prisma.orderItem.findMany({
-      where: { order: { status: { not: "CANCELLED" } } },
+      where: { order: { tenantId, status: { not: "CANCELLED" } } },
       select: {
         productId: true,
         name: true,
@@ -593,13 +598,13 @@ export async function getSalesBreakdown(): Promise<{
 
 export type StatusCount = { status: string; count: number };
 
-export async function getOrderStatusBreakdown(): Promise<{
+export async function getOrderStatusBreakdown(tenantId: string): Promise<{
   dbConnected: boolean;
   counts: StatusCount[];
   total: number;
 }> {
   try {
-    const grouped = await prisma.order.groupBy({ by: ["status"], _count: { status: true } });
+    const grouped = await prisma.order.groupBy({ by: ["status"], where: { tenantId: { equals: tenantId } }, _count: { status: true } });
     const map = new Map(grouped.map((g) => [g.status as string, g._count.status]));
     const counts = ORDER_STATUSES.map((s) => ({ status: s, count: map.get(s) ?? 0 }));
     const total = counts.reduce((n, c) => n + c.count, 0);
@@ -617,7 +622,7 @@ export type PaymentSlice = {
   share: number;
 };
 
-export async function getPaymentBreakdown(): Promise<{
+export async function getPaymentBreakdown(tenantId: string): Promise<{
   dbConnected: boolean;
   methods: PaymentSlice[];
   total: number;
@@ -625,7 +630,7 @@ export async function getPaymentBreakdown(): Promise<{
   try {
     const grouped = await prisma.order.groupBy({
       by: ["paymentMethod"],
-      where: { status: { not: "CANCELLED" } },
+      where: { tenantId: { equals: tenantId }, status: { not: "CANCELLED" } },
       _sum: { total: true },
       _count: true,
     });
@@ -653,12 +658,13 @@ export async function getPaymentBreakdown(): Promise<{
   }
 }
 
-export async function getRecentCustomers(limit = 5): Promise<{
+export async function getRecentCustomers(tenantId: string, limit = 5): Promise<{
   dbConnected: boolean;
   customers: AdminCustomerRow[];
 }> {
   try {
     const rows = await prisma.customer.findMany({
+      where: { tenantId: { equals: tenantId } },
       include: { orders: { select: { total: true, status: true } } },
       orderBy: { createdAt: "desc" },
       take: limit,

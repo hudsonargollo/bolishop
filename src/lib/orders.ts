@@ -51,7 +51,7 @@ function generateOrderNumber(): string {
 
 // Cancels an order exactly once and puts its items back into stock.
 // Safe to call repeatedly — only the call that flips the status restocks.
-export async function cancelOrderAndRestock(orderId: string): Promise<boolean> {
+export async function cancelOrderAndRestock(tenantId: string, orderId: string): Promise<boolean> {
   const restocked = await prisma.$transaction(async (tx) => {
     const res = await tx.order.updateMany({
       where: { id: orderId, status: { not: "CANCELLED" } },
@@ -75,6 +75,7 @@ export async function cancelOrderAndRestock(orderId: string): Promise<boolean> {
 }
 
 export async function createOrder(
+  tenantId: string,
   input: CheckoutInput,
   customerId?: string | null
 ): Promise<CreateOrderResult> {
@@ -89,7 +90,7 @@ export async function createOrder(
     // validate stock, then create the order and decrement stock atomically.
     const ids = data.items.map((i) => i.productId);
     const products = await prisma.product.findMany({
-      where: { id: { in: ids }, active: true },
+      where: { tenantId, id: { in: ids }, active: true },
       select: { id: true, name: true, price: true, stock: true },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
@@ -116,7 +117,7 @@ export async function createOrder(
 
     const subtotal = lineItems.reduce((s, i) => s + i.price * i.quantity, 0);
     // Shipping rules come from Admin → Settings (same values the checkout shows).
-    const shipping = shippingFor(subtotal, (await getStoreSettings()).shipping);
+    const shipping = shippingFor(subtotal, (await getStoreSettings(tenantId)).shipping);
     const total = subtotal + shipping;
     const email = data.email.trim().toLowerCase();
 
@@ -125,7 +126,7 @@ export async function createOrder(
     let safeCustomerId: string | null = null;
     if (customerId) {
       const customer = await prisma.customer.findUnique({
-        where: { id: customerId },
+        where: { tenantId, id: customerId },
         select: { id: true },
       });
       safeCustomerId = customer?.id ?? null;
@@ -152,6 +153,7 @@ export async function createOrder(
           }
           return tx.order.create({
             data: {
+              tenantId,
               orderNumber,
               customerName: data.customerName.trim(),
               email,

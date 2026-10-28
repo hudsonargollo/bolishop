@@ -9,13 +9,14 @@ import { cancelOrderAndRestock } from "./orders";
 //    cancelled with its stock restored so the shopper can simply retry.
 //  - amount (when the gateway reports it) must match the order total.
 export async function markOrderPayment(
+  tenantId: string,
   orderNumber: string,
   paid: boolean,
   amount?: number | null
 ): Promise<boolean> {
   try {
     const order = await prisma.order.findUnique({
-      where: { orderNumber },
+      where: { tenantId_orderNumber: { tenantId, orderNumber } },
       select: { id: true, total: true, status: true, paymentStatus: true, paymentMethod: true },
     });
     if (!order || order.paymentMethod === "COD") return false;
@@ -42,7 +43,7 @@ export async function markOrderPayment(
       where: { id: order.id, paymentStatus: "PENDING" },
       data: { paymentStatus: "FAILED" },
     });
-    if (res.count === 1) await cancelOrderAndRestock(order.id);
+    if (res.count === 1) await cancelOrderAndRestock(tenantId, order.id);
     return true;
   } catch (err) {
     console.error("[payment] could not update order:", err);

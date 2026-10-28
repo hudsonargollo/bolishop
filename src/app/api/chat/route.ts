@@ -51,6 +51,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Send a question" }, { status: 400 });
   }
 
-  const result = await answerCustomer(history);
+  const result = await answerCustomer('zariera', history);
   return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
 }

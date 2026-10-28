@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import { subscribe, type InboundState } from "@/app/(store)/inbound-actions";
+import { subscribe, type InboundState } from "@/app/[tenant]/(store)/inbound-actions";
 import { useToast } from "@/components/ui/toast";
 
 const initial: InboundState = {};

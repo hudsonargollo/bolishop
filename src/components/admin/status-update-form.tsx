@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import type { StatusState } from "@/app/admin/(dashboard)/orders/actions";
+import type { StatusState } from "@/app/[tenant]/admin/(dashboard)/orders/actions";
 import { useToast } from "@/components/ui/toast";
 
 type Action = (prev: StatusState, formData: FormData) => Promise<StatusState>;

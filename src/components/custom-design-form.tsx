@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect } from "react";
 import Link from "next/link";
-import { sendCustomRequest, type InboundState } from "@/app/(store)/inbound-actions";
+import { sendCustomRequest, type InboundState } from "@/app/[tenant]/(store)/inbound-actions";
 import { PIECE_TYPES, FINISHES, BUDGETS } from "@/lib/custom-request";
 import { useToast } from "@/components/ui/toast";
 import { ReferencePhotos } from "@/components/reference-photos";
