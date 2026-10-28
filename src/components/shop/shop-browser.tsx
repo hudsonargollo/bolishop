@@ -20,14 +20,14 @@ export function ShopBrowser({ eyebrow, title, description, products, facets }: P
   );
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-14">
+    <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
       <header className="border-b border-[var(--line)] pb-8">
         <span className="eyebrow">{eyebrow}</span>
         <h1 className="mt-3 font-serif text-4xl font-semibold text-ink">{title}</h1>
         {description && <p className="mt-2 max-w-2xl text-muted">{description}</p>}
       </header>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[250px_1fr]">
+      <div className="mt-10 grid gap-8 lg:grid-cols-[250px_1fr] xl:gap-10">
         {/* Desktop sidebar (mobile uses the drawer in ShopToolbar) */}
         <aside className="hidden lg:block">
           <div className="rounded-2xl border border-[var(--line)] bg-surface/60 p-5 shadow-[0_24px_50px_-40px_rgba(38,8,16,0.5)]">
@@ -42,7 +42,7 @@ export function ShopBrowser({ eyebrow, title, description, products, facets }: P
           <Suspense fallback={countLine}>
             <ShopToolbar count={products.length} facets={facets} />
           </Suspense>
-          <ProductGrid products={products} />
+          <ProductGrid products={products} layout="sidebar" />
         </div>
       </div>
     </div>

@@ -31,6 +31,10 @@ const schema = z.object({
   images: z.string().optional(),
   featured: z.boolean(),
   active: z.boolean(),
+}).refine((d) => !d.active || (d.images ?? "").split(/[\n,]/).some((u) => u.trim()), {
+  // A live piece without a photo shows as a blank tile in the shop.
+  message: "Add at least one photo — or untick “Active” to save it as a hidden draft.",
+  path: ["images"],
 });
 
 function parse(formData: FormData) {

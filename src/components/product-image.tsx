@@ -40,17 +40,19 @@ export function ProductImage({
 
   return (
     <div
-      className={`flex h-full w-full items-center justify-center ${className}`}
+      className={`@container flex h-full w-full items-center justify-center ${className}`}
       style={{ background: pickGradient(seed) }}
       role="img"
       aria-label={alt}
     >
-      <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true" opacity="0.55">
-        <path
-          d="M12 0l2.4 9.6L24 12l-9.6 2.4L12 24l-2.4-9.6L0 12l9.6-2.4z"
-          fill="#b98b36"
-        />
-      </svg>
+      <span className="flex flex-col items-center gap-2 text-[#9a7432]">
+        <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true" opacity="0.6">
+          <path d="M12 0l2.4 9.6L24 12l-9.6 2.4L12 24l-2.4-9.6L0 12l9.6-2.4z" fill="currentColor" />
+        </svg>
+        <span className="hidden text-[0.6rem] font-semibold uppercase tracking-[0.22em] opacity-80 @[9rem]:block">
+          Photo coming soon
+        </span>
+      </span>
     </div>
   );
 }

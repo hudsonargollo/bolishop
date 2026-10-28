@@ -79,7 +79,7 @@ export function ProductCard({ product }: { product: ProductView }) {
         )}
       </Link>
 
-      <div className="relative flex flex-1 flex-col p-4">
+      <div className="relative flex flex-1 flex-col p-3 sm:p-4">
         {/* gold hairline where the photo meets the label */}
         <span className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" aria-hidden="true" />
 

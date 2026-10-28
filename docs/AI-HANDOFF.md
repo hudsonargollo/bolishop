@@ -1228,3 +1228,42 @@ still worked).
 - **Local `next start` after the change:** `/shop` 0.27s cold / 0.07s warm, product 0.09s / 0.006s, search 0.03s.
   `next build` passes; tsc and eslint are clean.
 - **Owner to-do:** if the Vercel project settings pin a different Function Region, set it to Singapore (sin1) there too.
+
+### 2026-10-28 — Auth-page flash, Show/Hide alignment, strict email rules, photo-less product, shop spacing (Claude)
+- **Flash before the sign-in page (owner report).** Clicking the account icon (or Checkout) while signed out
+  rendered `/account` first, so the header and footer showed around an empty page for ~200ms. Only then did the
+  server-side `requireCustomer` redirect to `/login`.
+  - **Fix: new `src/proxy.ts` (Next 16's renamed middleware).** It redirects before anything renders when the cookie
+    is missing: `/account/*` and `/checkout` without `zariera_customer` go to `/login?next=…`, and `/admin/*` (except
+    `/admin/login`) without `zariera_admin` goes to `/admin/login`.
+  - The matcher uses `missing: [{type:"cookie"}]`. Values must be literals, because Next reads the config statically.
+    The pages still verify the session itself, so a stale cookie gets the in-page redirect with no loop.
+  - Verified with a DOM mutation log: the click now goes from the shop straight to the sign-in card in one commit.
+- **Show/Hide gem pill (`RevealToggle`).** The label had a fixed `w-7`, but "SHOW" is wider, so it was clipped at the
+  right edge and off-centre.
+  - Now both words share one CSS grid cell (the pill is always as wide as the longer word and doesn't jump), with
+    `leading-none`, `justify-center` and the trailing letter-spacing trimmed.
+  - Measured: the gem has 10.8px on the left and the text ~10.8px on the right, vertically centred, in both states.
+- **Email format (`lib/auth-rules.ts`).** The owner said the green tick appeared for bad addresses.
+  - `EMAIL_RE` now rejects leading, trailing and doubled dots and labels that start or end with "-".
+  - The ending must be a 2-letter country code or a known generic TLD (`GENERIC_TLDS`).
+  - `emailSuggestion()` catches provider typos (gmial / gmai / gamil / yahooo / hotmial / outlok → "Did you mean …?") and
+    wrong endings on known providers (gmail.co / .con / .comm / .cm). Real mailbox domains like mail.com and email.com
+    are left alone, and company domains such as `mail.pk` are not "corrected".
+  - Errors are specific: missing @, two @, spaces, nothing before or after the @, no ending, fake ending.
+  - Used by sign-in, sign-up, forgot password, contact, custom design and newsletter (`inbound-actions.ts`).
+  - All 31 existing customer, admin and order emails in the DB still pass. Browser check: `ahmad@gmail.co` gets no tick
+    and shows "Did you mean ahmad@gmail.com?" on blur; `…gmail.com` gets the green tick.
+- **Product without a photo.** Live has a 16th product, "Wilma Forbes" (`/product/wilma-forbes`, Bracelets), saved in
+  the admin with **no images**. The upload flow itself works.
+  - The admin product actions now refuse an **active** product with no photo ("Add at least one photo — or untick
+    'Active' to save it as a hidden draft"). Tested locally: the form showed the error and nothing was saved.
+  - `ProductImage`'s placeholder now reads "Photo coming soon" (container query: shown only when the tile is big enough).
+  - **Owner to-do:** add a photo to Wilma Forbes in the live admin, or delete it if it was a test.
+- **Collection page spacing.** Beside the 250px sidebar the shop squeezed 4 cards into ~820px (~190px each), so names,
+  prices and the stock line wrapped and looked broken.
+  - `ProductGrid` gets `layout="sidebar"`: 2 across on phones and 3 from `md` up (~300px cards at 1366px).
+  - Gaps are now `gap-x-3 gap-y-6`, and `sm:gap-x-5 sm:gap-y-8` from `sm` up. The shop container is `max-w-7xl`, and card
+    padding is `p-3 sm:p-4`. Home and search keep 4 across.
+- **Test pass:** tsc and eslint are clean and `next build` passes (proxy registered). Every store route returns
+  200/307/404 as expected; the stale-cookie path has no loop; phone 375px has no horizontal scroll.

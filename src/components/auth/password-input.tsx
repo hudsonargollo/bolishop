@@ -11,7 +11,7 @@ export function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: ()
       onClick={onToggle}
       aria-pressed={shown}
       aria-label={shown ? "Hide password" : "Show password"}
-      className={`group/reveal mr-2 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border pl-2 pr-2.5 text-[0.6rem] font-bold uppercase tracking-[0.18em] transition-all duration-300 ${
+      className={`group/reveal mr-2 inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full border px-2.5 text-[0.6rem] font-bold uppercase leading-none tracking-[0.16em] transition-[color,background-color,border-color,box-shadow] duration-300 ${
         shown
           ? "border-gold bg-gradient-to-r from-gold-hi via-gold to-gold-deep text-maroon shadow-[0_6px_16px_-8px_rgba(169,126,48,0.9)]"
           : "border-gold/45 bg-transparent text-gold-deep hover:border-gold hover:bg-gold/10"
@@ -25,13 +25,19 @@ export function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: ()
         strokeLinejoin="round"
         strokeLinecap="round"
         aria-hidden="true"
-        className={`h-4 w-4 transition-transform duration-500 ${shown ? "rotate-[360deg] scale-110" : "group-hover/reveal:scale-110"}`}
+        className={`h-4 w-4 shrink-0 transition-transform duration-500 ${shown ? "rotate-[360deg] scale-110" : "group-hover/reveal:scale-110"}`}
       >
         <path d="M7 5h10l4 5-9 10L3 10z" fill={shown ? "currentColor" : "none"} fillOpacity={shown ? 0.22 : 0} />
         <path d="M3 10h18M10 5 8.6 10 12 20l3.4-10L14 5" />
         {shown && <path d="M20.5 2.5v2.6M19.2 3.8h2.6M3.5 2.8v1.8M2.6 3.7h1.8" strokeWidth="1.4" />}
       </svg>
-      <span className="w-7 text-left">{shown ? "Hide" : "Show"}</span>
+      {/* Both words share one grid cell, so the pill is always as wide as the
+          longer one and never jumps; the trailing letter-spacing is trimmed so
+          the word sits optically centred. */}
+      <span className="-mr-[0.16em] grid">
+        <span className={`col-start-1 row-start-1 ${shown ? "invisible" : ""}`}>Show</span>
+        <span className={`col-start-1 row-start-1 ${shown ? "" : "invisible"}`}>Hide</span>
+      </span>
     </button>
   );
 }

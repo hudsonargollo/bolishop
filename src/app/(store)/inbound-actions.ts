@@ -14,12 +14,16 @@ import {
   REFERENCE_PHOTOS_HEADING,
 } from "@/lib/custom-request";
 import { saveUpload, sniffImage, type ImageExt } from "@/lib/uploads";
+import { emailError } from "@/lib/auth-rules";
 
 export type InboundState = { ok?: boolean; error?: string; values?: Record<string, string> };
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(120),
-  email: z.string().trim().email("Enter a valid email").max(200),
+  email: z.string().trim().superRefine((v, ctx) => {
+    const err = emailError(v);
+    if (err) ctx.addIssue({ code: "custom", message: err });
+  }),
   phone: z.string().trim().max(30).optional(),
   subject: z.string().trim().max(200).optional(),
   message: z.string().trim().min(5, "Please write a short message").max(5000),
@@ -78,7 +82,10 @@ async function saveContact(_prev: InboundState, formData: FormData): Promise<Inb
 
 const customSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(120),
-  email: z.string().trim().email("Enter a valid email").max(200),
+  email: z.string().trim().superRefine((v, ctx) => {
+    const err = emailError(v);
+    if (err) ctx.addIssue({ code: "custom", message: err });
+  }),
   phone: z.string().trim().min(7, "Enter a phone / WhatsApp number so we can discuss your design").max(30),
   pieceType: z.enum(PIECE_TYPES, { message: "Choose what you'd like us to make" }),
   finish: z.enum(FINISHES, { message: "Choose a finish" }),
@@ -152,8 +159,9 @@ export async function subscribe(_prev: InboundState, formData: FormData): Promis
   if (!rateLimit(`subscribe:${await clientIp()}`, 10, 30 * 60_000)) return { error: TOO_MANY };
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!z.string().email().max(200).safeParse(email).success) {
-    return { error: "Please enter a valid email address." };
+  const emailProblem = emailError(email);
+  if (emailProblem) {
+    return { error: emailProblem };
   }
   const source = String(formData.get("source") ?? "newsletter").slice(0, 80) || "newsletter";
 
