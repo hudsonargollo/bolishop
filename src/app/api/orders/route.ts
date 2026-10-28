@@ -1,45 +1,10 @@
 import { NextResponse } from "next/server";
 import { createOrder, cancelOrderAndRestock } from "@/lib/orders";
 import { initiatePayment, isOnlineConfigured, type PaymentMethod } from "@/lib/payments";
-import { getCustomerSession, startCustomerSession } from "@/lib/customer-auth";
+import { getCustomerSession } from "@/lib/customer-auth";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, MIN_PASSWORD } from "@/lib/password";
 import { clientIp, rateLimit, TOO_MANY } from "@/lib/rate-limit";
 import { siteUrl } from "@/lib/site";
-
-// If a guest opted to create an account during checkout, register them,
-// link this order to the new account and sign them in. Best-effort — a
-// failure here (e.g. email already taken) must never fail the placed order.
-async function maybeCreateGuestAccount(
-  input: { email?: unknown; customerName?: unknown; createAccount?: unknown; password?: unknown },
-  orderNumber: string
-): Promise<boolean> {
-  if (input.createAccount !== true) return false;
-  const email = String(input.email ?? "").trim().toLowerCase();
-  const name = String(input.customerName ?? "").trim();
-  const password = String(input.password ?? "");
-  if (!email || password.length < MIN_PASSWORD) return false;
-
-  try {
-    // Unique index on email makes this race-safe: a duplicate throws P2002 and
-    // the order simply stays a guest order.
-    const created = await prisma.customer.create({
-      data: { name: name || email, email, passwordHash: hashPassword(password) },
-    });
-    await prisma.order.update({
-      where: { orderNumber },
-      data: { customerId: created.id },
-    });
-    await startCustomerSession({ id: created.id, email: created.email, name: created.name });
-    return true;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (!/P2002|Unique constraint/i.test(msg)) {
-      console.error("[order] guest account creation failed (order still placed):", err);
-    }
-    return false;
-  }
-}
 
 export async function POST(request: Request) {
   if (!rateLimit(`order:${await clientIp()}`, 10, 10 * 60_000)) {
@@ -66,16 +31,27 @@ export async function POST(request: Request) {
     );
   }
 
-  // Link the order to the signed-in customer account, if any.
+  // Orders are for signed-in customers only (the checkout page redirects guests;
+  // this stops direct API calls). A cookie for a deleted account doesn't count.
   const session = await getCustomerSession();
-  const result = await createOrder(input, session?.id ?? null);
+  const customer = session
+    ? await prisma.customer
+        .findUnique({ where: { id: session.id }, select: { id: true, email: true } })
+        .catch(() => null)
+    : null;
+  if (!customer) {
+    return NextResponse.json(
+      { ok: false, error: "Please sign in to place your order.", signIn: true },
+      { status: 401 }
+    );
+  }
+
+  // The order belongs to the account, so its emails go to the account's address.
+  const result = await createOrder({ ...input, email: customer.email }, customer.id);
 
   if (!result.ok) {
     return NextResponse.json(result, { status: 400 });
   }
-
-  // Guest first-order sign-up (only when not already signed in).
-  const accountCreated = session ? false : await maybeCreateGuestAccount(input, result.orderNumber);
 
   if (method === "PAYFAST" || method === "SAFEPAY") {
     const order = encodeURIComponent(result.orderNumber);
@@ -103,7 +79,7 @@ export async function POST(request: Request) {
           .catch((err) => console.error("[order] could not save payment reference:", err));
       }
       return NextResponse.json(
-        { ...result, accountCreated, redirectUrl: payment.redirectUrl },
+        { ...result, redirectUrl: payment.redirectUrl },
         { status: 201 }
       );
     }
@@ -127,5 +103,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ ...result, accountCreated }, { status: 201 });
+  return NextResponse.json(result, { status: 201 });
 }

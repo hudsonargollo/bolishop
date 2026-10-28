@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { shippingFor } from "./settings-shared";
 import { getStoreSettings } from "./settings";
 import { sendOrderEmails } from "./email";
+import { refreshCatalog } from "./cache-tags";
 
 
 export const checkoutSchema = z.object({
@@ -51,7 +52,7 @@ function generateOrderNumber(): string {
 // Cancels an order exactly once and puts its items back into stock.
 // Safe to call repeatedly — only the call that flips the status restocks.
 export async function cancelOrderAndRestock(orderId: string): Promise<boolean> {
-  return prisma.$transaction(async (tx) => {
+  const restocked = await prisma.$transaction(async (tx) => {
     const res = await tx.order.updateMany({
       where: { id: orderId, status: { not: "CANCELLED" } },
       data: { status: "CANCELLED" },
@@ -69,6 +70,8 @@ export async function cancelOrderAndRestock(orderId: string): Promise<boolean> {
     }
     return true;
   });
+  if (restocked) refreshCatalog();
+  return restocked;
 }
 
 export async function createOrder(
@@ -175,6 +178,7 @@ export async function createOrder(
       }
     }
     if (!createdOrder) throw new Error("Could not allocate an order number");
+    refreshCatalog(); // stock changed
 
     // (Admins see new orders via the dashboard bell, which polls /api/admin/orders/latest.)
 

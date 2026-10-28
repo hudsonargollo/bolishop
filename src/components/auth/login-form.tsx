@@ -27,6 +27,12 @@ export function LoginForm({ next }: { next?: string }) {
         <p className="mt-1 text-sm text-muted">Sign in to continue shopping.</p>
       </div>
 
+      {next?.startsWith("/checkout") && (
+        <p className="mt-5 rounded-xl border border-gold/50 bg-gold/10 px-3.5 py-3 text-center text-sm text-ink">
+          Please sign in or create a free account to place your order — your cart is saved.
+        </p>
+      )}
+
       <form ref={formRef} action={formAction} onSubmit={f.onSubmit} noValidate className="mt-7 space-y-5">
         {next && <input type="hidden" name="next" value={next} />}
         <AuthField

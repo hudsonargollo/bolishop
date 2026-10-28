@@ -32,6 +32,12 @@ export function RegisterForm({ next }: { next?: string }) {
         </p>
       </div>
 
+      {next?.startsWith("/checkout") && (
+        <p className="mt-5 rounded-xl border border-gold/50 bg-gold/10 px-3.5 py-3 text-center text-sm text-ink">
+          An account is needed to place an order — it takes a minute and your cart is saved.
+        </p>
+      )}
+
       <form ref={formRef} action={formAction} onSubmit={f.onSubmit} noValidate className="mt-7 space-y-5">
         {next && <input type="hidden" name="next" value={next} />}
         <AuthField

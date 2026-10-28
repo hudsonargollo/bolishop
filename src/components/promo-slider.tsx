@@ -10,22 +10,22 @@ import { Emblem } from "./brand/emblem";
 // jewelry is always fully visible. `focus` sets the vertical crop point
 // (where the jewelry sits in each photo) so necklaces/earrings stay in view.
 const SLIDES: { src: string; focus: string }[] = [
-  { src: "/images/promo/promo-01.jpg", focus: "center 60%" },
-  { src: "/images/promo/promo-02.jpg", focus: "center 42%" },
-  { src: "/images/promo/promo-03.jpg", focus: "center 66%" },
-  { src: "/images/promo/promo-04.jpg", focus: "center 60%" },
-  { src: "/images/promo/promo-05.jpg", focus: "center 55%" },
-  { src: "/images/promo/promo-06.jpg", focus: "center 48%" },
-  { src: "/images/promo/promo-07.jpg", focus: "center 44%" },
-  { src: "/images/promo/promo-08.jpg", focus: "center 58%" },
-  { src: "/images/promo/promo-09.jpg", focus: "center 40%" },
-  { src: "/images/promo/promo-10.jpg", focus: "center 55%" },
-  { src: "/images/promo/promo-11.jpg", focus: "center 64%" },
-  { src: "/images/promo/promo-12.jpg", focus: "center 55%" },
-  { src: "/images/promo/promo-13.jpg", focus: "center 45%" }, // rings on satin
-  { src: "/images/promo/promo-14.jpg", focus: "center 52%" }, // stacked bangles
-  { src: "/images/promo/promo-15.jpg", focus: "center 52%" }, // rings + bracelet
-  { src: "/images/promo/promo-16.jpg", focus: "center 42%" }, // bracelets + face
+  { src: "/images/promo/promo-01.webp", focus: "center 60%" },
+  { src: "/images/promo/promo-02.webp", focus: "center 42%" },
+  { src: "/images/promo/promo-03.webp", focus: "center 66%" },
+  { src: "/images/promo/promo-04.webp", focus: "center 60%" },
+  { src: "/images/promo/promo-05.webp", focus: "center 55%" },
+  { src: "/images/promo/promo-06.webp", focus: "center 48%" },
+  { src: "/images/promo/promo-07.webp", focus: "center 44%" },
+  { src: "/images/promo/promo-08.webp", focus: "center 58%" },
+  { src: "/images/promo/promo-09.webp", focus: "center 40%" },
+  { src: "/images/promo/promo-10.webp", focus: "center 55%" },
+  { src: "/images/promo/promo-11.webp", focus: "center 64%" },
+  { src: "/images/promo/promo-12.webp", focus: "center 55%" },
+  { src: "/images/promo/promo-13.webp", focus: "center 45%" }, // rings on satin
+  { src: "/images/promo/promo-14.webp", focus: "center 52%" }, // stacked bangles
+  { src: "/images/promo/promo-15.webp", focus: "center 52%" }, // rings + bracelet
+  { src: "/images/promo/promo-16.webp", focus: "center 42%" }, // bracelets + face
 ];
 
 const INTERVAL = 4500;

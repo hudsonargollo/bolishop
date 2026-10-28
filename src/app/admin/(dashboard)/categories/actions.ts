@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { slugify } from "@/lib/slug";
+import { refreshCatalog } from "@/lib/cache-tags";
 
 export type CategoryState = { error?: string; ok?: boolean };
 
@@ -45,6 +46,7 @@ export async function createCategory(
     return { error: "Could not create the category." };
   }
   revalidatePath("/admin/categories");
+  refreshCatalog();
   revalidatePath("/", "layout");
   revalidatePath("/shop");
   return { ok: true };
@@ -61,6 +63,7 @@ export async function deleteCategory(id: string): Promise<void> {
     flash = /P2003|Foreign key/i.test(msg) ? "category-in-use" : "delete-failed";
   }
   revalidatePath("/admin/categories");
+  refreshCatalog();
   revalidatePath("/", "layout");
   redirect(`/admin/categories?flash=${flash}`);
 }

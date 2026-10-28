@@ -1,5 +1,7 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
+import { SETTINGS_TAG, refreshSettings } from "./cache-tags";
 import { CONTACT } from "./contact";
 import { FLAT_SHIPPING, FREE_SHIPPING_THRESHOLD, DELIVERY_TIME } from "./shipping";
 import type { StoreSettings } from "./settings-shared";
@@ -55,11 +57,18 @@ function merge(saved: Partialish | null | undefined): StoreSettings {
   };
 }
 
-/** Current store settings (cached per request). Never throws. */
+// Shared across requests (every store page reads settings in the layout);
+// refreshed by tag when Admin → Settings is saved.
+const loadStored = unstable_cache(
+  async () => (await prisma.setting.findUnique({ where: { key: KEY } }))?.value ?? null,
+  ["store-settings-v1"],
+  { tags: [SETTINGS_TAG], revalidate: 600 }
+);
+
+/** Current store settings. Never throws. */
 export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
   try {
-    const row = await prisma.setting.findUnique({ where: { key: KEY } });
-    return merge(row?.value as Partialish | undefined);
+    return merge((await loadStored()) as Partialish | undefined);
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -78,6 +87,7 @@ export async function saveStoreSettings<K extends keyof StoreSettings>(
     create: { key: KEY, value: next as object },
     update: { value: next as object },
   });
+  refreshSettings();
 }
 
 /** Announcement lines with placeholders filled in ({freeThreshold}, {flatFee}). */

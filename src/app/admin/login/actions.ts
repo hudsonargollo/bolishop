@@ -27,10 +27,15 @@ async function login(_prev: LoginState, formData: FormData): Promise<LoginState>
 
   const res = await verifyCredentials(email, password);
   if (!res.ok) {
-    return { error: "Invalid email or password." };
+    return {
+      error:
+        res.reason === "db"
+          ? "Can't reach the database right now, so you can't sign in. Please try again in a minute."
+          : "Invalid email or password.",
+    };
   }
 
-  await startSession(key, res.role);
+  await startSession(key, res.role, res.ver);
   redirect("/admin?flash=admin-login");
 }
 

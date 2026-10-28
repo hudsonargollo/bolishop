@@ -2,12 +2,14 @@ import { getAdminOrders } from "@/lib/admin-data";
 import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { OrdersTable } from "@/components/admin/orders-table";
+import { requireAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Orders" };
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage() {
+  await requireAdmin(); // layouts don't re-run on client navigation
   const { dbConnected, orders } = await getAdminOrders();
 
   const revenue = orders

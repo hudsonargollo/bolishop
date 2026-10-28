@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import { getAdminProduct, getCategoriesForSelect } from "@/lib/admin-data";
 import { ProductForm } from "@/components/admin/product-form";
 import { updateProduct } from "../actions";
+import { requireAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Edit product" };
 
 export const dynamic = "force-dynamic";
 
 export default async function EditProductPage({ params }: PageProps<"/admin/products/[id]">) {
+  await requireAdmin(); // layouts don't re-run on client navigation
   const { id } = await params;
   const [product, categories] = await Promise.all([
     getAdminProduct(id),

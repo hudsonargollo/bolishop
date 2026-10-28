@@ -4,6 +4,7 @@ import { getAdminStats, getAdminOrders, getAdminProducts } from "@/lib/admin-dat
 import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { StatusBadge } from "@/components/status-badge";
+import { requireAdmin } from "@/lib/admin";
 
 export const metadata = { title: { absolute: "Dashboard · ZARIERA Admin" } };
 
@@ -18,6 +19,7 @@ function formatDate(iso: string): string {
 }
 
 export default async function AdminDashboard() {
+  await requireAdmin(); // layouts don't re-run on client navigation
   const [stats, ordersData, productsData, settings] = await Promise.all([
     getAdminStats(),
     getAdminOrders(),

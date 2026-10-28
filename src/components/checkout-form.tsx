@@ -10,10 +10,6 @@ import { formatPrice, savingsOf } from "@/lib/format";
 import { SavingsStrip } from "@/components/ui/sale-badge";
 import { shippingFor } from "@/lib/settings-shared";
 
-// Mirrors MIN_PASSWORD in lib/password.ts (that module uses node:crypto, so it
-// can't be imported into this client component).
-const MIN_PASSWORD = 8;
-
 type PaymentMethod = "COD" | "PAYFAST" | "SAFEPAY";
 
 export type CheckoutDefaults = {
@@ -58,9 +54,6 @@ export function CheckoutForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(paymentNotice ? NOTICES[paymentNotice] : null);
 
-  // Guests (not signed in) can create an account while placing their order.
-  const isGuest = !defaults?.email;
-  const [createAccount, setCreateAccount] = useState(false);
 
   const shipping = shippingFor(subtotal, shippingRules);
   const total = subtotal + shipping;
@@ -110,8 +103,6 @@ export function CheckoutForm({
       postalCode: form.get("postalCode"),
       notes: form.get("notes"),
       paymentMethod: payment,
-      createAccount: isGuest && createAccount,
-      password: isGuest && createAccount ? form.get("password") : undefined,
       items: items.map((i) => ({
         productId: i.id,
         name: i.name,
@@ -127,6 +118,11 @@ export function CheckoutForm({
         body: JSON.stringify(payload),
       });
       const data = await res.json();
+      if (res.status === 401 && data.signIn) {
+        // Session ended while on this page — sign in again and come back.
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+        return;
+      }
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Could not place your order. Please try again.");
       }
@@ -134,14 +130,7 @@ export function CheckoutForm({
         window.location.href = data.redirectUrl;
         return;
       }
-      if (isGuest && createAccount && !data.accountCreated) {
-        toast.error("Your order is placed, but we couldn't create an account — that email may already be registered. Sign in to see it.");
-      }
-      router.push(
-        `/checkout/success?order=${encodeURIComponent(data.orderNumber)}${
-          data.accountCreated ? "&account=1" : ""
-        }`
-      );
+      router.push(`/checkout/success?order=${encodeURIComponent(data.orderNumber)}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
       setError(message);
@@ -171,7 +160,7 @@ export function CheckoutForm({
               </div>
               <div>
                 <label htmlFor="co-email" className={labelCls}>Email</label>
-                <input name="email" id="co-email" type="email" required defaultValue={defaults?.email} placeholder="you@example.com" className={inputCls} />
+                <input name="email" id="co-email" type="email" required readOnly defaultValue={defaults?.email} title="Order updates go to your account email" className={`${inputCls} cursor-not-allowed opacity-75`} />
               </div>
               <div>
                 <label htmlFor="co-phone" className={labelCls}>Phone</label>
@@ -231,47 +220,6 @@ export function CheckoutForm({
             </div>
           </Section>
 
-          {/* First-order sign-up (guests only) */}
-          {isGuest && (
-            <section className="rounded-xl border border-[var(--line)] bg-gold/5 p-5">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={createAccount}
-                  onChange={(e) => setCreateAccount(e.target.checked)}
-                  className="mt-1 accent-[var(--color-gold-deep)]"
-                />
-                <span>
-                  <span className="block font-medium text-ink">Create an account for faster checkout</span>
-                  <span className="block text-sm text-muted">
-                    Save your details and track this &amp; future orders. We&apos;ll use your email above.
-                  </span>
-                </span>
-              </label>
-              {createAccount && (
-                <div className="mt-4">
-                  <label htmlFor="co-password" className={labelCls}>Choose a password</label>
-                  <input
-                    name="password"
-                    id="co-password"
-                    type="password"
-                    required
-                    minLength={MIN_PASSWORD}
-                    autoComplete="new-password"
-                    placeholder={`At least ${MIN_PASSWORD} characters`}
-                    className={`${inputCls} max-w-sm`}
-                  />
-                  <p className="mt-2 text-xs text-muted">
-                    Already have an account?{" "}
-                    <Link href="/login" className="text-gold-deep underline">
-                      Sign in
-                    </Link>{" "}
-                    instead.
-                  </p>
-                </div>
-              )}
-            </section>
-          )}
         </div>
 
         {/* Order summary — sticky/locked on desktop */}

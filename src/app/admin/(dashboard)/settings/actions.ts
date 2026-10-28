@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin, refreshAdminSession } from "@/lib/admin";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { saveStoreSettings, type StoreSettings } from "@/lib/settings";
 
@@ -44,6 +45,7 @@ export async function saveContactSettings(_p: SettingsState, fd: FormData): Prom
   try {
     await requireOwner();
   } catch (e) {
+    unstable_rethrow(e); // a signed-out redirect must reach the browser
     return { error: (e as Error).message };
   }
   const values = form(fd, ["email", "phone", "whatsapp", "city", "hours"]);
@@ -68,6 +70,7 @@ export async function saveSocialSettings(_p: SettingsState, fd: FormData): Promi
   try {
     await requireOwner();
   } catch (e) {
+    unstable_rethrow(e); // a signed-out redirect must reach the browser
     return { error: (e as Error).message };
   }
   const values = form(fd, ["instagram", "facebook", "tiktok"]);
@@ -81,6 +84,7 @@ export async function saveShippingSettings(_p: SettingsState, fd: FormData): Pro
   try {
     await requireOwner();
   } catch (e) {
+    unstable_rethrow(e); // a signed-out redirect must reach the browser
     return { error: (e as Error).message };
   }
   const values = form(fd, ["flatFee", "freeThreshold", "deliveryTime"]);
@@ -100,6 +104,7 @@ export async function saveAnnouncementSettings(_p: SettingsState, fd: FormData):
   try {
     await requireOwner();
   } catch (e) {
+    unstable_rethrow(e); // a signed-out redirect must reach the browser
     return { error: (e as Error).message };
   }
   const raw = String(fd.get("announcements") ?? "");
@@ -117,6 +122,7 @@ export async function saveAlertSettings(_p: SettingsState, fd: FormData): Promis
   try {
     await requireOwner();
   } catch (e) {
+    unstable_rethrow(e); // a signed-out redirect must reach the browser
     return { error: (e as Error).message };
   }
   const values = form(fd, ["lowStockThreshold", "orderEmail"]);
@@ -144,6 +150,7 @@ export async function changePassword(_p: SettingsState, fd: FormData): Promise<S
     const user = await prisma.user.findUnique({ where: { email: session.email } });
     if (!user || !verifyPassword(current, user.passwordHash)) return { error: "Current password is incorrect." };
     await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(next) } });
+    await refreshAdminSession(session.email); // other devices are signed out
   } catch {
     return { error: "Could not update — database unavailable." };
   }
@@ -155,6 +162,7 @@ export async function addTeamMember(_p: SettingsState, fd: FormData): Promise<Se
   try {
     await requireOwner();
   } catch (e) {
+    unstable_rethrow(e); // a signed-out redirect must reach the browser
     return { error: (e as Error).message };
   }
   const values = form(fd, ["name", "email", "role"]);

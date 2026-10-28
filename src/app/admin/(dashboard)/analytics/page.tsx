@@ -2,12 +2,14 @@ import { getSalesDaily, getAdminStats, getPaymentBreakdown } from "@/lib/admin-d
 import { formatPrice } from "@/lib/format";
 import { SalesChartPro } from "@/components/admin/sales-chart-pro";
 import { PaymentMethodPanel, SalesHighlightsPanel } from "@/components/admin/dashboard-insights";
+import { requireAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Analytics" };
 
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
+  await requireAdmin(); // layouts don't re-run on client navigation
   const [salesDaily, stats, payments] = await Promise.all([
     getSalesDaily(365),
     getAdminStats(),

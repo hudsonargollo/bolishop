@@ -13,6 +13,13 @@ import { JsonLd } from "@/components/json-ld";
 import { siteUrl } from "@/lib/site";
 import { AccordionItem } from "@/components/ui/accordion-item";
 
+// Product pages are cached and served instantly; a product / stock change
+// refreshes them (catalog tag + revalidatePath in the admin actions).
+export const revalidate = 300;
+export function generateStaticParams() {
+  return []; // build nothing up front — each page is cached on its first visit
+}
+
 export async function generateMetadata({
   params,
 }: PageProps<"/product/[slug]">): Promise<Metadata> {

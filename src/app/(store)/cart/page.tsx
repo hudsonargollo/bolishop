@@ -129,6 +129,7 @@ export default function CartPage() {
             </span>
           </div>
           {savings > 0 && <SavingsStrip amount={savings} className="mt-5" />}
+          {/* Guests are sent to sign in first (checkout needs an account), then back. */}
           <Link
             href="/checkout"
             className="mt-6 block rounded-full bg-gradient-to-r from-gold-hi to-gold px-8 py-3.5 text-center text-sm font-medium text-maroon transition hover:opacity-90"

@@ -114,7 +114,7 @@ Client must provide the real payment + courier credentials before go-live.
 - `/` home (hero slider, categories, featured, **Signature-Edit sliding gallery**, testimonials, newsletter)
 - `/shop`, `/shop/[category]`, `/product/[slug]` (Amazon-style detail: 2 buttons, specs, accordions, hover-zoom)
 - `/cart`, `/checkout`, `/checkout/success`
-- `/login`, `/register`, `/account` (customer accounts; guest checkout supported; `?next=` return-to)
+- `/login`, `/register`, `/account` (customer accounts; checkout needs a signed-in customer since 2026-10-28; `?next=` return-to)
 - `/forgot-password`, `/reset-password?token=` — password reset by email (stateless signed 1-hour, single-use link)
 - `/account/orders` — guest order tracking (POST server action; email never in URL)
 - `/contact` (`?topic=custom` from the Custom page) — real form, saved to DB + emailed to owner
@@ -189,7 +189,7 @@ Data layer: **`src/lib/admin-data.ts`** — all admin aggregations
 ## 8. Notable features already built
 
 - **Order flow fixed** — no fake-success; real errors surfaced; stock decremented atomically.
-- **Guest checkout** + optional account creation on first order.
+- **Checkout requires a customer account** (guests are sent to `/login?next=/checkout…` and come back; the old guest checkout + "create an account" box was removed 2026-10-28).
 - **Email OTP at sign-up** — 6-digit code emailed before the account is created (see §14, 2026-10-20).
 - **Dark / light mode** (token flip, no-flash script) — brand-safe colors.
 - **Fully responsive** (mobile + tablet), no horizontal overflow.
@@ -1170,3 +1170,61 @@ error, unknown email → "Check your inbox" (no mail sent). Mobile 375px + dark 
   - butterfy → 1, "rings under 2300" → 5, "ring on sale" → 3, "2000-3000 bracelet" → 3, xyzabc → no-results card.
   - Keyboard nav works, mobile 375px has no horizontal overflow, light and dark checked; tsc and eslint are clean.
 - If the catalog grows past a few thousand pieces, move the ranking to Postgres (`pg_trgm`) instead of loading every product.
+
+### 2026-10-28 — One admin session per account, sign-in required to order, speed fixes (Claude)
+**1. Admin: a new sign-in signs out the older one** (owner: when the admin is signed in somewhere and someone
+signs in elsewhere, the first one must be logged out; the old flow was confusing, and a sign-in while the DB was down
+still worked).
+- **How it works (no schema change / no Neon migration):** a successful sign-in stamps the account's
+  `User.updatedAt` (`verifyCredentials`), and the cookie carries that stamp as `ver` (`AdminSession.ver`).
+  `checkAdmin()` (`lib/admin.ts`) accepts a cookie only if `ver` equals the row's current `updatedAt`. Otherwise it
+  returns `reason: "replaced"`.
+- **Rule: one live session per admin account.** Two different admin accounts can still work at the same time.
+  Anything that rewrites the admin row (`db:create-admin`, a password change) also signs out other devices. The
+  password change re-issues the caller's own cookie (`refreshAdminSession`).
+- **How the old device leaves:**
+  - Every admin page now calls `requireAdmin()` itself. Before, only the dashboard layout did, and layouts don't re-run
+    on client-side navigation.
+  - The order-bell poll (`/api/admin/orders/latest`, every 10s) gets `401 {reason}` and sends the tab to
+    `/admin/login?signed_out=replaced`, which shows "You were signed out because this admin account was signed in on
+    another device".
+- **Fails closed:** if the DB can't be reached, the session is rejected (`signed_out=db`), and the login form says "Can't
+  reach the database right now".
+- **Old cookies:** cookies made before this change have no `ver`, so every admin signs in once more after the deploy.
+- `settings/actions.ts`: the `requireOwner()` try/catch blocks now `unstable_rethrow(e)`, so a sign-out redirect isn't
+  turned into an error string.
+- Tested locally (minted sessions against the local DB only): device A gets 200, device B signs in, then A's API call
+  gets 401 replaced and A's page gets a 307 to the login notice. An open dashboard redirected itself within 10s.
+
+**2. Orders need a signed-in customer.**
+- `/checkout` calls `requireCustomer()` and sends guests to `/login?next=/checkout?buy=…&qty=…`. The login and register
+  cards show "sign in / create a free account to place your order — your cart is saved" (the cart is in localStorage).
+- `POST /api/orders` returns 401 `{signIn: true}` with no session, or for a deleted account. The order email is forced to the
+  account email (the field is read-only on the form).
+- The guest "Create an account for faster checkout" box and `maybeCreateGuestAccount` were removed, and so was the
+  `?account=1` success notice. The success page now always links to "View my orders".
+- The checkout page loads the product, phone and settings in parallel, after the sign-in check.
+
+**3. Speed** (owner: "website bahut slow hai, users chale jaate hain"). Live before: `/shop` 8.5s, product 6.5s,
+`/search` 4.3s to first byte.
+- **Root cause:** Vercel ran the functions in `iad1` (Washington, `x-vercel-id: sin1::iad1`) while Neon is in
+  `ap-southeast-1` (Singapore). Every query crossed the globe (~250ms), and pages made several queries in a row.
+  - **Fix:** a new `vercel.json` with `"regions": ["sin1"]`, so functions run next to the DB (also closer to Pakistan).
+- **Catalog cache (`lib/catalog.ts` rewritten, ~100 lines shorter):**
+  - The whole active catalog (products + categories) is one `unstable_cache` snapshot, tag `catalog` (`lib/cache-tags.ts`),
+    with a 5-minute safety revalidate. `getProducts`, `getProductBySlug`, facets, related, featured and `searchStore` all
+    work in memory from it.
+  - The Prisma `contains` query and the duplicate `filterSample` were removed; the sample data is now only the no-DB fallback.
+  - `getFeaturedProducts` falls back to the newest real pieces, not the sample ones.
+- **Refreshed immediately (`refreshCatalog()` → `revalidateTag("catalog", { expire: 0 })`)** by product
+  create/update/delete, category create/delete, `createOrder` (stock), and `cancelOrderAndRestock`.
+- **Settings:** `getStoreSettings` is cached across requests (tag `store-settings`, 10 min) and refreshed by
+  `saveStoreSettings`. Every store page read it in the layout, which was one DB round-trip per page.
+- **Product pages are ISR** (`revalidate = 300`, `generateStaticParams() → []`), so each is cached on its first visit
+  and purged by the catalog tag / `revalidatePath("/", "layout")`.
+- **Images:** the hero and promo slides moved from JPG to WebP (promo resized to 1200px wide). 4.4 MB became 1.9 MB:
+  `girl-2` 583K→146K, `promo-04` 525K→288K. The first hero photo is preloaded with high priority (`react-dom` `preload`).
+  The unused `promo-bangles.jpg` was deleted.
+- **Local `next start` after the change:** `/shop` 0.27s cold / 0.07s warm, product 0.09s / 0.006s, search 0.03s.
+  `next build` passes; tsc and eslint are clean.
+- **Owner to-do:** if the Vercel project settings pin a different Function Region, set it to Singapore (sin1) there too.

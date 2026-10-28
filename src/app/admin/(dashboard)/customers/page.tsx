@@ -1,6 +1,7 @@
 import { getAdminCustomers } from "@/lib/admin-data";
 import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
+import { requireAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Customers" };
 
@@ -11,6 +12,7 @@ function fmtDate(iso: string) {
 }
 
 export default async function AdminCustomersPage() {
+  await requireAdmin(); // layouts don't re-run on client navigation
   const { dbConnected, customers } = await getAdminCustomers();
 
   return (

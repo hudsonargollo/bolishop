@@ -1,22 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { preload } from "react-dom";
 import Link from "next/link";
 import { Emblem } from "./brand/emblem";
 
 // Mix of product shots and models wearing jewelry.
 // Models wearing modern, everyday jewelry (gold-plated / silver-tone stainless steel).
 const SLIDES = [
-  "/images/girl-1.jpg",
-  "/images/girl-2.jpg",
-  "/images/model1.jpg",
-  "/images/girl-3.jpg",
-  "/images/story-model.jpg",
+  "/images/girl-1.webp",
+  "/images/girl-2.webp",
+  "/images/model1.webp",
+  "/images/girl-3.webp",
+  "/images/story-model.webp",
 ];
 
 const INTERVAL = 5000;
 
 export function HeroSlider() {
+  // The first photo is a CSS background (found late by the browser) and the
+  // biggest thing above the fold — fetch it straight away.
+  preload(SLIDES[0], { as: "image", fetchPriority: "high" });
   const [index, setIndex] = useState(0);
   const paused = useRef(false);
 

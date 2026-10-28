@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { slugify } from "@/lib/slug";
+import { refreshCatalog } from "@/lib/cache-tags";
 
 export type ProductFormState = { error?: string; values?: Record<string, string> };
 
@@ -85,7 +86,8 @@ export async function createProduct(
     return { error: dbError(err), values: keep(formData) };
   }
   revalidatePath("/admin/products");
-  revalidatePath("/", "layout"); // storefront (home is cached 5 min) sees the change now
+  refreshCatalog(); // storefront data + cached pages see the change on the next visit
+  revalidatePath("/", "layout");
   redirect("/admin/products?flash=product-created");
 }
 
@@ -104,7 +106,8 @@ export async function updateProduct(
     return { error: dbError(err), values: keep(formData) };
   }
   revalidatePath("/admin/products");
-  revalidatePath("/", "layout"); // storefront (home is cached 5 min) sees the change now
+  refreshCatalog(); // storefront data + cached pages see the change on the next visit
+  revalidatePath("/", "layout");
   redirect("/admin/products?flash=product-updated");
 }
 
@@ -119,7 +122,8 @@ export async function deleteProduct(id: string): Promise<void> {
     flash = /P2003|Foreign key/i.test(msg) ? "product-in-use" : "delete-failed";
   }
   revalidatePath("/admin/products");
-  revalidatePath("/", "layout"); // storefront (home is cached 5 min) sees the change now
+  refreshCatalog(); // storefront data + cached pages see the change on the next visit
+  revalidatePath("/", "layout");
   redirect(`/admin/products?flash=${flash}`);
 }
 

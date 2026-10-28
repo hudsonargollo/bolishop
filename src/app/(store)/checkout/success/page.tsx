@@ -47,7 +47,6 @@ export default async function SuccessPage({
 }: PageProps<"/checkout/success">) {
   const sp = await searchParams;
   const orderNumber = ((Array.isArray(sp.order) ? sp.order[0] : sp.order) ?? "").trim();
-  const accountCreated = (Array.isArray(sp.account) ? sp.account[0] : sp.account) === "1";
 
   // Everything shown here comes from the database, never from the URL.
   const order = orderNumber ? await findOrder(orderNumber) : null;
@@ -96,20 +95,16 @@ export default async function SuccessPage({
         </div>
       </div>
 
-      {accountCreated && (
-        <div className="mx-auto mt-6 max-w-sm rounded-xl border border-gold/40 bg-gold/5 p-5 text-sm">
-          <p className="font-medium text-ink">Your account is ready 🎉</p>
-          <p className="mt-1 text-muted">
-            You&apos;re now signed in. View this order and track future ones from your account.
-          </p>
-          <Link
-            href="/account"
-            className="mt-3 inline-block rounded-full border border-[var(--line-strong)] px-6 py-2 text-xs font-medium uppercase tracking-[0.12em] text-ink transition hover:border-gold hover:text-gold-deep"
-          >
-            Go to my account
-          </Link>
-        </div>
-      )}
+      <div className="mx-auto mt-6 max-w-sm rounded-xl border border-gold/40 bg-gold/5 p-5 text-sm">
+        <p className="font-medium text-ink">Saved to your account</p>
+        <p className="mt-1 text-muted">Track this order and see all your past ones any time.</p>
+        <Link
+          href="/account/orders"
+          className="mt-3 inline-block rounded-full border border-[var(--line-strong)] px-6 py-2 text-xs font-medium uppercase tracking-[0.12em] text-ink transition hover:border-gold hover:text-gold-deep"
+        >
+          View my orders
+        </Link>
+      </div>
 
       <p className="mx-auto mt-6 max-w-md text-sm text-muted">
         {online

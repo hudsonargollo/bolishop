@@ -140,6 +140,13 @@ export function OrderNotifications() {
         const res = await fetch(`/api/admin/orders/latest?since=${encodeURIComponent(since)}`, {
           cache: "no-store",
         });
+        if (res.status === 401) {
+          // Signed out (e.g. this account just signed in on another device) — leave the dashboard.
+          const { reason } = (await res.json().catch(() => ({}))) as { reason?: string | null };
+          stopped = true;
+          window.location.replace(reason ? `/admin/login?signed_out=${reason}` : "/admin/login");
+          return;
+        }
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as { orders: { id: string; createdAt: string }[] };
         setConnected(true);

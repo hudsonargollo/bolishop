@@ -9,16 +9,19 @@ export { hashPassword, verifyPassword } from "./password";
 
 const SESSION_COOKIE = "zariera_admin";
 const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 hours
-const ADMIN_ROLES = ["ADMIN", "STAFF"];
+export const ADMIN_ROLES = ["ADMIN", "STAFF"];
 
-export type AdminSession = { email: string; role: string; exp: number };
+/** `ver` = the admin row's `updatedAt` (ms) when this session signed in; a newer
+ *  sign-in on the same account bumps it, which retires this session (see lib/admin). */
+export type AdminSession = { email: string; role: string; ver: number; exp: number };
 
 // ---------- Cookie helpers (server actions / route handlers) ----------
 
-export async function startSession(email: string, role: string): Promise<void> {
+export async function startSession(email: string, role: string, ver: number): Promise<void> {
   const session: AdminSession = {
     email,
     role,
+    ver,
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   };
   const store = await cookies();
@@ -41,6 +44,6 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const session = readToken<AdminSession>("admin", token);
-  if (!session || !session.email || !ADMIN_ROLES.includes(session.role)) return null;
+  if (!session || !session.email || typeof session.ver !== "number" || !ADMIN_ROLES.includes(session.role)) return null;
   return session;
 }

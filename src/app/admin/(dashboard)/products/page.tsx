@@ -4,12 +4,14 @@ import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteProduct } from "./actions";
+import { requireAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Products" };
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage() {
+  await requireAdmin(); // layouts don't re-run on client navigation
   const { dbConnected, products } = await getAdminProducts();
 
   return (

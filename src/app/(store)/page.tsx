@@ -223,7 +223,7 @@ export default async function HomePage() {
             <div className="relative aspect-[4/5] overflow-hidden rounded-sm bg-panel">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/story-model.jpg"
+                src="/images/story-model.webp"
                 alt="A model wearing ZARIERA gold-plated stainless steel jewelry"
                 className="h-full w-full object-cover"
               />

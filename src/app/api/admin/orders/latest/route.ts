@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getVerifiedAdmin } from "@/lib/admin";
+import { checkAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
 // New-order check for the admin bell. The dashboard calls this every few
@@ -10,8 +10,9 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const session = await getVerifiedAdmin();
-  if (!session) return NextResponse.json({ ok: false }, { status: 401 });
+  // `reason` lets the dashboard say why it was signed out ("replaced" = signed in elsewhere).
+  const { session, reason } = await checkAdmin();
+  if (!session) return NextResponse.json({ ok: false, reason }, { status: 401 });
 
   const sinceParam = new URL(request.url).searchParams.get("since");
   const parsed = sinceParam ? new Date(sinceParam) : null;
