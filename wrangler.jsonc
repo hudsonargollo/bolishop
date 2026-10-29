@@ -4,5 +4,8 @@
   "name": "bolistore",
   "compatibility_date": "2026-10-29",
   "compatibility_flags": ["nodejs_compat"],
-  "pages_build_output_dir": ".open-next/assets"
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  }
 }
