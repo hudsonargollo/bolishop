@@ -47,5 +47,9 @@ next-env.d.ts
 # Netlify local build output
 /.netlify/
 
+# OpenNext / Cloudflare build artifacts
+/.open-next/
+/.wrangler/
+
 # Playwright MCP scratch output
 /.playwright-mcp/
