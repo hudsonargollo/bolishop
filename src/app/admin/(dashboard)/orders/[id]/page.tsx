@@ -9,6 +9,7 @@ import { updateOrderStatus, updatePaymentStatus } from "../actions";
 import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS } from "@/lib/order-status";
 import { courierLabel, trackingUrl } from "@/lib/couriers";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export const metadata = { title: "Order details" };
 
@@ -18,8 +19,9 @@ export default async function AdminOrderDetailPage({
   params,
 }: PageProps<"/admin/orders/[id]">) {
   await requireAdmin(); // layouts don't re-run on client navigation
+  const tenantId = (await getDefaultTenantId()) ?? "";
   const { id } = await params;
-  const order = await getAdminOrder(id);
+  const order = await getAdminOrder(tenantId, id);
   if (!order) notFound();
 
   return (

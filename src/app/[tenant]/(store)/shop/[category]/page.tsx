@@ -6,12 +6,14 @@ import { getCategoryBySlug, getProducts, getShopFacets } from "@/lib/catalog";
 import { parseProductFilters } from "@/lib/filters";
 import { ShopBrowser } from "@/components/shop/shop-browser";
 import { Emblem } from "@/components/brand/emblem";
+import { requireTenant } from "@/lib/tenant";
 
 export async function generateMetadata({
   params,
-}: PageProps<"/shop/[category]">): Promise<Metadata> {
-  const { category } = await params;
-  const cat = await getCategoryBySlug(category);
+}: PageProps<"/[tenant]/shop/[category]">): Promise<Metadata> {
+  const { category, tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
+  const cat = await getCategoryBySlug(tenant.id, category);
   if (!cat) return { title: "Not found" };
   return {
     title: cat.name,
@@ -23,15 +25,19 @@ export async function generateMetadata({
 export default async function CategoryPage({
   params,
   searchParams,
-}: PageProps<"/shop/[category]">) {
-  const { category } = await params;
-  const cat = await getCategoryBySlug(category);
+}: PageProps<"/[tenant]/shop/[category]">) {
+  const { category, tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
+  const cat = await getCategoryBySlug(tenant.id, category);
   if (!cat) notFound();
 
   const sp = await searchParams;
   const parsed = parseProductFilters(sp);
   const filters = { ...parsed, categorySlug: cat.slug };
-  const [products, facets] = await Promise.all([getProducts(filters), getShopFacets(cat.slug)]);
+  const [products, facets] = await Promise.all([
+    getProducts(tenant.id, filters),
+    getShopFacets(tenant.id, cat.slug),
+  ]);
 
   const hasFilters = Boolean(
     parsed.q || parsed.material || parsed.minPrice || parsed.maxPrice || parsed.onSale || parsed.inStock

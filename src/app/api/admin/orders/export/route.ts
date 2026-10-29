@@ -1,5 +1,6 @@
 import { getVerifiedAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 // Download all orders as CSV (opens in Excel / Google Sheets).
 // Optional ?status=PENDING etc. to export one tab only.
@@ -19,7 +20,9 @@ export async function GET(request: Request) {
   if (!session) return new Response("Unauthorized", { status: 401 });
 
   const status = new URL(request.url).searchParams.get("status")?.toUpperCase();
-  const where = status && STATUSES.includes(status) ? { status: status as never } : {};
+  const tenantId = await getDefaultTenantId();
+  const base = tenantId ? { tenantId } : {};
+  const where = status && STATUSES.includes(status) ? { ...base, status: status as never } : base;
 
   let orders;
   try {

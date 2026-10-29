@@ -1,68 +1,43 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { markOrderPayment } from "@/lib/order-payment";
-import { verifySafepaySignature } from "@/lib/payments";
+import { cancelOrderAndRestock } from "@/lib/orders";
+import { siteUrl } from "@/lib/site";
+import { getTenant } from "@/lib/tenant";
 
-// Safepay server-to-server webhook. The event is trusted only when its
-// X-SFPY-SIGNATURE verifies with SAFEPAY_WEBHOOK_SECRET. The order is matched
-// by the tracker saved at checkout (Order.paymentRef), falling back to an
-// order reference if Safepay echoes one.
-export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
-  const raw = await request.text();
-  let body: {
-    type?: string;
-    data?: {
-      tracker?: string | { token?: string };
-      token?: string;
-      order_id?: string;
-      reference?: string;
-      state?: string;
-      status?: string;
-    };
-  };
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    return NextResponse.json({ received: false }, { status: 400 });
-  }
+// The gateway sends the shopper here when they abandon/cancel payment.
+// Releases the reserved stock of that still-unpaid online order so a retry
+// doesn't leave a duplicate pending order behind. Only recent, unpaid,
+// online orders can be cancelled this way (order numbers are unguessable).
+const MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
-  const signature =
-    request.headers.get("x-sfpy-signature") ?? request.headers.get("x-safepay-signature") ?? "";
-  if (!verifySafepaySignature(raw, JSON.stringify(body.data ?? {}), signature)) {
-    console.warn("[safepay] rejected webhook with invalid signature");
-    return NextResponse.json({ received: false }, { status: 401 });
-  }
+export async function GET(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
+  const { tenant: tenantSlug } = await params;
+  const orderNumber = new URL(request.url).searchParams.get("order")?.trim() ?? "";
+  const tenant = await getTenant(tenantSlug);
 
-  const d = body.data ?? {};
-  const tracker = typeof d.tracker === "string" ? d.tracker : d.tracker?.token ?? d.token ?? "";
-  const state = (d.state ?? d.status ?? "").toLowerCase();
-  const type = (body.type ?? "").toLowerCase();
-
-  const paid =
-    ["paid", "completed", "tracker_ended", "captured"].includes(state) ||
-    type === "payment:succeeded" ||
-    type === "payment.succeeded";
-  const failed =
-    ["failed", "cancelled", "canceled", "declined"].includes(state) || /fail|cancel/.test(type);
-
-  try {
-    let orderNumber = "";
-    if (tracker) {
-      const o = await prisma.order.findFirst({
-        where: { paymentRef: tracker },
-        select: { orderNumber: true },
+  if (tenant && orderNumber) {
+    try {
+      const o = await prisma.order.findUnique({
+        where: { tenantId_orderNumber: { tenantId: tenant.id, orderNumber } },
+        select: { id: true, paymentMethod: true, paymentStatus: true, status: true, createdAt: true },
       });
-      orderNumber = o?.orderNumber ?? "";
+      if (
+        o &&
+        o.paymentMethod !== "COD" &&
+        o.paymentStatus === "PENDING" &&
+        o.status === "PENDING" &&
+        Date.now() - o.createdAt.getTime() < MAX_AGE_MS
+      ) {
+        await prisma.order.updateMany({
+          where: { id: o.id, paymentStatus: "PENDING" },
+          data: { paymentStatus: "FAILED" },
+        });
+        await cancelOrderAndRestock(tenant.id, o.id);
+      }
+    } catch (err) {
+      console.error("[payment] cancel handling failed:", err);
     }
-    if (!orderNumber) orderNumber = d.order_id ?? d.reference ?? "";
-
-    // Amount units in Safepay events vary by API version, so the signature +
-    // tracker match is the trust anchor here (no amount comparison).
-    if (orderNumber && (paid || failed)) await markOrderPayment(tenant, orderNumber, paid);
-  } catch (err) {
-    console.error("[safepay] webhook handling failed:", err);
-    return NextResponse.json({ received: false }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
+  // Back into this store's checkout with the "cancelled" notice.
+  return NextResponse.redirect(`${siteUrl}/${tenantSlug}/checkout?payment=cancelled`, { status: 303 });
 }

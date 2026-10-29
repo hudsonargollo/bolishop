@@ -2,15 +2,16 @@ import Link from "next/link";
 import { getCategoriesForSelect } from "@/lib/admin-data";
 import { ProductForm } from "@/components/admin/product-form";
 import { createProduct } from "../actions";
-import { requireAdmin } from "@/lib/admin";
+import { requireTenantAdmin } from "@/lib/admin";
 
 export const metadata = { title: "New product" };
 
 export const dynamic = "force-dynamic";
 
-export default async function NewProductPage() {
-  await requireAdmin(); // layouts don't re-run on client navigation
-  const categories = await getCategoriesForSelect();
+export default async function NewProductPage({ params }: PageProps<"/[tenant]/admin/products/new">) {
+  const { tenant: tenantSlug } = await params;
+  const { tenantId } = await requireTenantAdmin(tenantSlug); // layouts don't re-run on client navigation
+  const categories = await getCategoriesForSelect(tenantId);
 
   return (
     <div>

@@ -1,16 +1,11 @@
+import { unstable_cache } from "next/cache";
+import { notFound } from "next/navigation";
 import { prisma } from "./prisma";
+import { DEFAULT_TENANT_SLUG } from "./tenant-config";
 
-/** Slugs that belong to the platform, not to a tenant. */
-export const RESERVED_SLUGS = new Set([
-  "admin",
-  "api",
-  "_next",
-  "favicon.ico",
-  "robots.txt",
-  "sitemap.xml",
-  "og",
-  "uploads",
-]);
+export { RESERVED_SLUGS, DEFAULT_TENANT_SLUG } from "./tenant-config";
+
+import { RESERVED_SLUGS } from "./tenant-config";
 
 export type TenantView = {
   id: string;
@@ -74,39 +69,63 @@ export async function getTenantByDomain(host: string): Promise<TenantView | null
   }
 }
 
-/** Per-request tenant context keyed by tenantId. */
-export function setTenantContext(tenantId: string) {
-  (prisma as any).$use(async (params: any, next: any) => {
-    const action = params.action;
-    if (
-      action === "findMany" ||
-      action === "create" ||
-      action === "update" ||
-      action === "updateMany" ||
-      action === "delete" ||
-      action === "count" ||
-      action === "groupBy" ||
-      action === "aggregate"
-    ) {
-      params.args = params.args ?? {};
-      params.args.where = { ...(params.args.where ?? {}), tenantId };
-    }
-    if (
-      action === "findUnique" ||
-      action === "findFirst" ||
-      action === "upsert"
-    ) {
-      params.args = params.args ?? {};
-      params.args.where = { ...(params.args.where ?? {}), tenantId };
-    }
-    return next(params);
-  });
+/**
+ * Slug of the tenant used by the pre-multitenant routes that have no tenant
+ * context: legacy /admin pages, legacy /api/* handlers and the seeding /
+ * create-admin scripts. (The canonical constant lives in ./tenant-config,
+ * which proxy.ts imports without pulling in the DB client; re-exported here
+ * for app code.)
+ */
+const DEFAULT_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  displayName: true,
+  tagline: true,
+  publicUrl: true,
+  currency: true,
+  logo: true,
+  brandColor: true,
+  active: true,
+} as const;
+
+// Cheap and shared across requests; the store mounts the same helper everywhere.
+const loadDefaultTenant = unstable_cache(
+  async (): Promise<TenantView | null> => {
+    // Named tenant first; else the oldest active tenant (single-tenant installs).
+    const bySlug = await prisma.tenant.findUnique({
+      where: { slug: DEFAULT_TENANT_SLUG },
+      select: DEFAULT_SELECT,
+    });
+    if (bySlug?.active) return bySlug;
+    return await prisma.tenant.findFirst({
+      where: { active: true },
+      orderBy: { createdAt: "asc" },
+      select: DEFAULT_SELECT,
+    });
+  },
+  ["default-tenant-v1"],
+  { revalidate: 300 }
+);
+
+/** Server-only: the tenant legacy (non-[tenant]) routes operate on, or null
+ *  when the database is unreachable / has no tenants. */
+export async function getDefaultTenant(): Promise<TenantView | null> {
+  try {
+    return await loadDefaultTenant();
+  } catch {
+    return null;
+  }
 }
 
-/** Convenience: resolve tenant and set Prisma query context for tenant scoping. */
-export async function getTenantContext(slug: string): Promise<{ tenantId: string; currency: string } | null> {
+export async function getDefaultTenantId(): Promise<string | null> {
+  return (await getDefaultTenant())?.id ?? null;
+}
+
+/** Resolves the [tenant] route param; renders the 404 page for unknown /
+ *  inactive slugs. Use in every server page / layout / action under /[tenant]. */
+export async function requireTenant(slug: string): Promise<TenantView> {
   const t = await getTenant(slug);
-  if (!t) return null;
-  setTenantContext(t.id);
-  return { tenantId: t.id, currency: t.currency };
+  if (!t) notFound();
+  return t;
 }

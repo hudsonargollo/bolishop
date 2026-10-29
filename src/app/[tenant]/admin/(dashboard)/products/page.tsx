@@ -4,15 +4,16 @@ import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteProduct } from "./actions";
-import { requireAdmin } from "@/lib/admin";
+import { requireTenantAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Products" };
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminProductsPage() {
-  await requireAdmin(); // layouts don't re-run on client navigation
-  const { dbConnected, products } = await getAdminProducts();
+export default async function AdminProductsPage({ params }: PageProps<"/[tenant]/admin/products">) {
+  const { tenant: tenantSlug } = await params;
+  const { tenantId } = await requireTenantAdmin(tenantSlug); // layouts don't re-run on client navigation
+  const { dbConnected, products } = await getAdminProducts(tenantId);
 
   return (
     <div>

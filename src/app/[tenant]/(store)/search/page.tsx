@@ -4,8 +4,9 @@ import { searchStore } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import { ProductGrid } from "@/components/product-grid";
 import { SearchBox } from "@/components/search/search-box";
+import { requireTenant } from "@/lib/tenant";
 
-export async function generateMetadata({ searchParams }: PageProps<"/search">): Promise<Metadata> {
+export async function generateMetadata({ searchParams }: PageProps<"/[tenant]/search">): Promise<Metadata> {
   const sp = await searchParams;
   const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q)?.trim().slice(0, 60);
   return {
@@ -26,10 +27,12 @@ function Tag({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function SearchPage({ searchParams }: PageProps<"/search">) {
+export default async function SearchPage({ params, searchParams }: PageProps<"/[tenant]/search">) {
+  const { tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
   const sp = await searchParams;
   const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q)?.trim().slice(0, 100) ?? "";
-  const result = await searchStore(q);
+  const result = await searchStore(tenant.id, q);
   const { products, category, corrections, minPrice, maxPrice, onSale, partial, categories, all } = result;
   const live = categories.filter((c) => c.count > 0);
 

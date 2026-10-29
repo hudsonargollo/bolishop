@@ -24,10 +24,31 @@ async function main() {
     process.exit(1);
   }
 
+  // Every User row belongs to a tenant (unique per tenant+email). The admin is
+  // created under the default tenant (DEFAULT_TENANT_SLUG in .env, else zariera),
+  // which is created on the spot when missing.
+  const slug = process.env.DEFAULT_TENANT_SLUG || "zariera";
+  const tenant = await prisma.tenant.upsert({
+    where: { slug },
+    update: {},
+    create: {
+      slug,
+      name: slug,
+      displayName: process.env.STORE_NAME || "ZARIERA",
+    },
+    select: { id: true },
+  });
+
   const user = await prisma.user.upsert({
-    where: { email },
+    where: { tenantId_email: { tenantId: tenant.id, email } },
     update: { passwordHash: hashPassword(password), role: "ADMIN" },
-    create: { email, passwordHash: hashPassword(password), role: "ADMIN", name: "Admin" },
+    create: {
+      email,
+      passwordHash: hashPassword(password),
+      role: "ADMIN",
+      name: "Admin",
+      tenantId: tenant.id,
+    },
   });
 
   console.log(`✅ Admin ready in database: ${user.email} (role ${user.role})`);

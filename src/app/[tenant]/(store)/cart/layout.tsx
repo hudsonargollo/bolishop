@@ -6,6 +6,6 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function CartLayout({ children }: LayoutProps<"/cart">) {
+export default function CartLayout({ children }: LayoutProps<"/[tenant]/cart">) {
   return children;
 }

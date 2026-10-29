@@ -9,6 +9,9 @@ type LoginState = { error?: string; values?: { email: string } };
 
 const initial: LoginState = {};
 
+// Typed fallback so useActionState infers LoginState even without an action prop.
+const noAction = async (state: LoginState): Promise<LoginState> => state;
+
 const input =
   "w-full rounded-lg border border-[var(--line-strong)] bg-surface px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-gold focus:ring-2 focus:ring-[rgba(195,154,78,0.22)]";
 
@@ -28,7 +31,7 @@ export function AdminLoginForm({
   action?: (prev: LoginState, formData: FormData) => Promise<LoginState>;
   storeName?: string;
 }) {
-  const [state, formAction, pending] = useActionState(action ?? (async () => ({})), initial);
+  const [state, formAction, pending] = useActionState(action ?? noAction, initial);
   const toast = useToast();
 
   useEffect(() => {

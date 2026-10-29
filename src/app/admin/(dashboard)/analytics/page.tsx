@@ -3,6 +3,7 @@ import { formatPrice } from "@/lib/format";
 import { SalesChartPro } from "@/components/admin/sales-chart-pro";
 import { PaymentMethodPanel, SalesHighlightsPanel } from "@/components/admin/dashboard-insights";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export const metadata = { title: "Analytics" };
 
@@ -10,10 +11,11 @@ export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   await requireAdmin(); // layouts don't re-run on client navigation
+  const tenantId = (await getDefaultTenantId()) ?? "";
   const [salesDaily, stats, payments] = await Promise.all([
-    getSalesDaily(365),
-    getAdminStats(),
-    getPaymentBreakdown(),
+    getSalesDaily(tenantId, 365),
+    getAdminStats(tenantId),
+    getPaymentBreakdown(tenantId),
   ]);
 
   const aov = stats.orders > 0 ? Math.round(stats.revenue / stats.orders) : 0;

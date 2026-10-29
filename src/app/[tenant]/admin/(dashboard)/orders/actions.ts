@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/admin";
+import { actionTenantId, requireAdmin } from "@/lib/admin";
 import { bookShipment, isCourier } from "@/lib/couriers";
 import { cancelOrderAndRestock } from "@/lib/orders";
 import {
@@ -22,13 +22,14 @@ export async function bookShipmentAction(
   formData: FormData
 ): Promise<ShipState> {
   await requireAdmin();
+  const tenantId = (await actionTenantId()) ?? "";
   const courier = String(formData.get("courier") || "");
   if (!isCourier(courier)) return { error: "Please choose a courier." };
 
   let order;
   try {
-    order = await prisma.order.findUnique({
-      where: { id },
+    order = await prisma.order.findFirst({
+      where: { id, tenantId },
       include: { items: { select: { quantity: true } } },
     });
   } catch {
@@ -46,14 +47,14 @@ export async function bookShipmentAction(
   // Claim the order first (atomic) so a double-click or a second admin can't
   // book the same parcel twice. Released again if the booking fails.
   const claim = await prisma.order.updateMany({
-    where: { id, trackingNumber: null, courier: null },
+    where: { id, tenantId, trackingNumber: null, courier: null },
     data: { courier },
   });
   if (claim.count !== 1) return { error: "This order is already being booked." };
 
   const release = () =>
     prisma.order
-      .updateMany({ where: { id, trackingNumber: null }, data: { courier: null } })
+      .updateMany({ where: { id, tenantId, trackingNumber: null }, data: { courier: null } })
       .catch(() => undefined);
 
   const itemCount = order.items.reduce((n, i) => n + i.quantity, 0);
@@ -92,8 +93,7 @@ export async function bookShipmentAction(
     return { error: `Booked (tracking ${result.trackingNumber}) but could not save. Note this number and retry.` };
   }
 
-  revalidatePath(`/admin/orders/${id}`);
-  revalidatePath("/admin/orders");
+  revalidatePath("/", "layout");
   return { ok: true, simulated: result.simulated };
 }
 
@@ -105,10 +105,11 @@ export async function updateOrderStatus(
   formData: FormData
 ): Promise<StatusState> {
   await requireAdmin();
+  const tenantId = (await actionTenantId()) ?? "";
   const status = String(formData.get("status")) as OrderStatus;
   if (!ORDER_STATUSES.includes(status)) return { error: "Invalid status." };
   try {
-    const order = await prisma.order.findUnique({ where: { id }, select: { status: true } });
+    const order = await prisma.order.findFirst({ where: { id, tenantId }, select: { status: true } });
     if (!order) return { error: "Order not found." };
     if (order.status === status) return { ok: true };
     if (!canMoveOrder(order.status, status)) {
@@ -116,14 +117,13 @@ export async function updateOrderStatus(
     }
     if (status === "CANCELLED") {
       // Cancelling returns the items to stock (exactly once).
-      await cancelOrderAndRestock(id);
+      await cancelOrderAndRestock(tenantId, id);
     } else {
       // Conditional on the status we validated against (no lost updates).
-      const res = await prisma.order.updateMany({ where: { id, status: order.status }, data: { status } });
+      const res = await prisma.order.updateMany({ where: { id, tenantId, status: order.status }, data: { status } });
       if (res.count !== 1) return { error: "The order changed meanwhile. Reload and try again." };
     }
-    revalidatePath(`/admin/orders/${id}`);
-    revalidatePath("/admin/orders");
+    revalidatePath("/", "layout");
     return { ok: true };
   } catch {
     return { error: "Could not update. Database unavailable." };
@@ -136,10 +136,14 @@ export async function updatePaymentStatus(
   formData: FormData
 ): Promise<StatusState> {
   await requireAdmin();
+  const tenantId = (await actionTenantId()) ?? "";
   const paymentStatus = String(formData.get("paymentStatus")) as PaymentStatus;
   if (!PAYMENT_STATUSES.includes(paymentStatus)) return { error: "Invalid payment status." };
   try {
-    const order = await prisma.order.findUnique({ where: { id }, select: { paymentStatus: true } });
+    const order = await prisma.order.findFirst({
+      where: { id, tenantId },
+      select: { paymentStatus: true },
+    });
     if (!order) return { error: "Order not found." };
     if (order.paymentStatus === paymentStatus) return { ok: true };
     if (!canMovePayment(order.paymentStatus, paymentStatus)) {
@@ -148,12 +152,11 @@ export async function updatePaymentStatus(
       };
     }
     const res = await prisma.order.updateMany({
-      where: { id, paymentStatus: order.paymentStatus },
+      where: { id, tenantId, paymentStatus: order.paymentStatus },
       data: { paymentStatus },
     });
     if (res.count !== 1) return { error: "The order changed meanwhile. Reload and try again." };
-    revalidatePath(`/admin/orders/${id}`);
-    revalidatePath("/admin/orders");
+    revalidatePath("/", "layout");
     return { ok: true };
   } catch {
     return { error: "Could not update. Database unavailable." };

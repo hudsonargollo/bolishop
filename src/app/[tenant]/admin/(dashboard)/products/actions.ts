@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/admin";
+import { actionTenantId, requireAdmin } from "@/lib/admin";
 import { slugify } from "@/lib/slug";
 import { refreshCatalog } from "@/lib/cache-tags";
 
@@ -81,11 +81,12 @@ export async function createProduct(
   formData: FormData
 ): Promise<ProductFormState> {
   await requireAdmin();
+  const tenantId = (await actionTenantId()) ?? "";
   const parsed = parse(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message, values: keep(formData) };
 
   try {
-    await prisma.product.create({ data: toData(parsed.data) });
+    await prisma.product.create({ data: { ...toData(parsed.data), tenantId } });
   } catch (err) {
     return { error: dbError(err), values: keep(formData) };
   }
@@ -101,10 +102,13 @@ export async function updateProduct(
   formData: FormData
 ): Promise<ProductFormState> {
   await requireAdmin();
+  const tenantId = (await actionTenantId()) ?? "";
   const parsed = parse(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message, values: keep(formData) };
 
   try {
+    const owned = await prisma.product.findFirst({ where: { id, tenantId }, select: { id: true } });
+    if (!owned) return { error: "Product not found.", values: keep(formData) };
     await prisma.product.update({ where: { id }, data: toData(parsed.data) });
   } catch (err) {
     return { error: dbError(err), values: keep(formData) };
@@ -117,9 +121,10 @@ export async function updateProduct(
 
 export async function deleteProduct(id: string): Promise<void> {
   await requireAdmin();
+  const tenantId = (await actionTenantId()) ?? "";
   let flash = "product-deleted";
   try {
-    await prisma.product.delete({ where: { id } });
+    await prisma.product.deleteMany({ where: { id, tenantId } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     // P2003 = foreign key: the product appears in past orders (kept for history).

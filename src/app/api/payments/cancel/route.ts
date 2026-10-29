@@ -11,12 +11,15 @@ const MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 export async function GET(request: Request) {
   const orderNumber = new URL(request.url).searchParams.get("order")?.trim() ?? "";
+  // Tenant of the cancelled order (for the redirect); "" when unknown.
+  let slug = "";
   if (orderNumber) {
     try {
-      const o = await prisma.order.findUnique({
+      const o = await prisma.order.findFirst({
         where: { orderNumber },
-        select: { id: true, paymentMethod: true, paymentStatus: true, status: true, createdAt: true },
+        select: { id: true, tenantId: true, paymentMethod: true, paymentStatus: true, status: true, createdAt: true, tenant: { select: { slug: true } } },
       });
+      if (o) slug = o.tenant.slug;
       if (
         o &&
         o.paymentMethod !== "COD" &&
@@ -28,11 +31,12 @@ export async function GET(request: Request) {
           where: { id: o.id, paymentStatus: "PENDING" },
           data: { paymentStatus: "FAILED" },
         });
-        await cancelOrderAndRestock(o.id);
+        await cancelOrderAndRestock(o.tenantId, o.id);
       }
     } catch (err) {
       console.error("[payment] cancel handling failed:", err);
     }
   }
-  return NextResponse.redirect(`${siteUrl}/checkout?payment=cancelled`, { status: 303 });
+  // Back into that store's checkout with the "cancelled" notice.
+  return NextResponse.redirect(`${siteUrl}/${slug}/checkout?payment=cancelled`, { status: 303 });
 }

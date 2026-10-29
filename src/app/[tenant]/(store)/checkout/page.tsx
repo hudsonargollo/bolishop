@@ -6,6 +6,7 @@ import { payfastConfigured, safepayConfigured } from "@/lib/payments";
 import { getProductBySlug } from "@/lib/catalog";
 import { getStoreSettings } from "@/lib/settings";
 import type { CartItem } from "@/components/cart/cart-provider";
+import { requireTenant } from "@/lib/tenant";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -14,7 +15,9 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function CheckoutPage({ searchParams }: PageProps<"/checkout">) {
+export default async function CheckoutPage({ params, searchParams }: PageProps<"/[tenant]/checkout">) {
+  const { tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
   const sp = await searchParams;
   const p = Array.isArray(sp.payment) ? sp.payment[0] : sp.payment;
   const paymentNotice = p === "cancelled" || p === "failed" ? p : null;
@@ -30,12 +33,15 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const session = await requireCustomer(`/checkout${query.size ? `?${query}` : ""}`);
 
   const [product, phone, settings] = await Promise.all([
-    buySlug ? getProductBySlug(buySlug) : null,
+    buySlug ? getProductBySlug(tenant.id, buySlug) : null,
     prisma.customer
-      .findUnique({ where: { id: session.id }, select: { phone: true } })
+      .findUnique({
+        where: { tenantId_email: { tenantId: tenant.id, email: session.email } },
+        select: { id: true, phone: true },
+      })
       .then((c) => c?.phone ?? undefined)
       .catch(() => undefined), // phone is optional — ignore lookup failures
-    getStoreSettings(),
+    getStoreSettings(tenant.id),
   ]);
 
   // "Buy it now": check out a single product instead of the whole cart.

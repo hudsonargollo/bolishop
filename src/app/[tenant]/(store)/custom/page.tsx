@@ -4,6 +4,7 @@ import { Emblem } from "@/components/brand/emblem";
 import { CustomDesignForm } from "@/components/custom-design-form";
 import { getStoreSettings } from "@/lib/settings";
 import { whatsappUrl } from "@/lib/settings-shared";
+import { requireTenant } from "@/lib/tenant";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/custom" },
@@ -17,8 +18,10 @@ const STEPS = [
   { n: "3", title: "Handcrafted for you", body: "Your one-of-a-kind piece is made and delivered." },
 ];
 
-export default async function CustomPage() {
-  const settings = await getStoreSettings();
+export default async function CustomPage({ params }: PageProps<"/[tenant]/custom">) {
+  const { tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
+  const settings = await getStoreSettings(tenant.id);
   return (
     <div className="bg-cream px-5 py-12">
       <OrnateFrame className="mx-auto max-w-4xl bg-panel">

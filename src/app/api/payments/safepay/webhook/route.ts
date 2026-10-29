@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { markOrderPayment } from "@/lib/order-payment";
 import { verifySafepaySignature } from "@/lib/payments";
@@ -6,7 +6,8 @@ import { verifySafepaySignature } from "@/lib/payments";
 // Safepay server-to-server webhook. The event is trusted only when its
 // X-SFPY-SIGNATURE verifies with SAFEPAY_WEBHOOK_SECRET. The order is matched
 // by the tracker saved at checkout (Order.paymentRef), falling back to an
-// order reference if Safepay echoes one.
+// order reference if Safepay echoes one. Legacy (non-tenant) endpoint: the
+// order itself carries its tenant, which keeps the write scoped.
 export async function POST(request: NextRequest) {
   const raw = await request.text();
   let body: {
@@ -46,19 +47,28 @@ export async function POST(request: NextRequest) {
     ["failed", "cancelled", "canceled", "declined"].includes(state) || /fail|cancel/.test(type);
 
   try {
+    // Resolve the order first (its row carries the tenantId we scope to).
+    let order: { tenantId: string; orderNumber: string } | null = null;
     let orderNumber = "";
     if (tracker) {
-      const o = await prisma.order.findFirst({
+      order = await prisma.order.findFirst({
         where: { paymentRef: tracker },
-        select: { orderNumber: true },
+        select: { tenantId: true, orderNumber: true },
       });
-      orderNumber = o?.orderNumber ?? "";
+      orderNumber = order?.orderNumber ?? "";
     }
     if (!orderNumber) orderNumber = d.order_id ?? d.reference ?? "";
 
     // Amount units in Safepay events vary by API version, so the signature +
     // tracker match is the trust anchor here (no amount comparison).
-    if (orderNumber && (paid || failed)) await markOrderPayment(orderNumber, paid);
+    if (orderNumber && (paid || failed)) {
+      const tenantId =
+        order?.tenantId ??
+        (await prisma.order
+          .findFirst({ where: { orderNumber }, select: { tenantId: true } })
+          .then((o) => o?.tenantId ?? null));
+      if (tenantId) await markOrderPayment(tenantId, orderNumber, paid);
+    }
   } catch (err) {
     console.error("[safepay] webhook handling failed:", err);
     return NextResponse.json({ received: false }, { status: 500 });

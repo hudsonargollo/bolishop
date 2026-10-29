@@ -4,7 +4,7 @@ import { getAdminStats, getAdminOrders, getAdminProducts } from "@/lib/admin-dat
 import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { StatusBadge } from "@/components/status-badge";
-import { requireAdmin } from "@/lib/admin";
+import { requireTenantAdmin } from "@/lib/admin";
 
 export const metadata = { title: { absolute: "Dashboard · ZARIERA Admin" } };
 
@@ -18,13 +18,14 @@ function formatDate(iso: string): string {
   });
 }
 
-export default async function AdminDashboard() {
-  await requireAdmin(); // layouts don't re-run on client navigation
+export default async function AdminDashboard({ params }: PageProps<"/[tenant]/admin">) {
+  const { tenant: tenantSlug } = await params;
+  const { tenantId } = await requireTenantAdmin(tenantSlug); // layouts don't re-run on client navigation
   const [stats, ordersData, productsData, settings] = await Promise.all([
-    getAdminStats(),
-    getAdminOrders(),
-    getAdminProducts(),
-    getStoreSettings(),
+    getAdminStats(tenantId),
+    getAdminOrders(tenantId),
+    getAdminProducts(tenantId),
+    getStoreSettings(tenantId),
   ]);
   const LOW = settings.inventory.lowStockThreshold;
   const recentOrders = ordersData.orders.slice(0, 5);

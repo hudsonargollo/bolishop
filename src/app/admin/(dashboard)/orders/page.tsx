@@ -3,6 +3,7 @@ import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { OrdersTable } from "@/components/admin/orders-table";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export const metadata = { title: "Orders" };
 
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage() {
   await requireAdmin(); // layouts don't re-run on client navigation
-  const { dbConnected, orders } = await getAdminOrders();
+  const tenantId = (await getDefaultTenantId()) ?? "";
+  const { dbConnected, orders } = await getAdminOrders(tenantId);
 
   const revenue = orders
     .filter((o) => o.status !== "CANCELLED")

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin, refreshAdminSession } from "@/lib/admin";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { saveStoreSettings, type StoreSettings } from "@/lib/settings";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export type SettingsState = { ok?: boolean; error?: string; values?: Record<string, string> };
 
@@ -24,8 +25,9 @@ function form(fd: FormData, keys: string[]): Record<string, string> {
 }
 
 async function save<K extends keyof StoreSettings>(section: K, value: StoreSettings[K]): Promise<SettingsState> {
+  const tenantId = (await getDefaultTenantId()) ?? "";
   try {
-    await saveStoreSettings(section, value);
+    await saveStoreSettings(tenantId, section, value);
   } catch (err) {
     console.error("[settings] save failed:", err);
     return { error: "Could not save — database unavailable." };
@@ -147,7 +149,10 @@ export async function changePassword(_p: SettingsState, fd: FormData): Promise<S
   if (next.length < ADMIN_MIN_PASSWORD) return { error: `New password must be at least ${ADMIN_MIN_PASSWORD} characters.` };
   if (next !== confirm) return { error: "The new passwords don't match." };
   try {
-    const user = await prisma.user.findUnique({ where: { email: session.email } });
+    const user = await prisma.user.findFirst({
+      where: { email: session.email },
+      orderBy: [{ tenantId: { sort: "desc", nulls: "last" } }],
+    });
     if (!user || !verifyPassword(current, user.passwordHash)) return { error: "Current password is incorrect." };
     await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(next) } });
     await refreshAdminSession(session.email); // other devices are signed out
@@ -178,8 +183,10 @@ export async function addTeamMember(_p: SettingsState, fd: FormData): Promise<Se
   if (password.length < ADMIN_MIN_PASSWORD)
     return { error: `Password must be at least ${ADMIN_MIN_PASSWORD} characters.`, values };
   try {
+    const teamTenantId = (await getDefaultTenantId()) ?? "";
     await prisma.user.create({
       data: {
+        tenantId: teamTenantId,
         name: parsed.data.name || null,
         email: parsed.data.email.toLowerCase(),
         role: parsed.data.role,
@@ -197,12 +204,13 @@ export async function addTeamMember(_p: SettingsState, fd: FormData): Promise<Se
 
 export async function removeTeamMember(id: string): Promise<void> {
   const session = await requireOwner();
-  const user = await prisma.user.findUnique({ where: { id } });
+  const tenantId = (await getDefaultTenantId()) ?? "";
+  const user = await prisma.user.findFirst({ where: { id, tenantId } });
   if (!user || user.email === session.email) return; // can't remove yourself
   if (user.role === "ADMIN") {
-    const admins = await prisma.user.count({ where: { role: "ADMIN" } });
+    const admins = await prisma.user.count({ where: { role: "ADMIN", tenantId } });
     if (admins <= 1) return; // never remove the last admin
   }
-  await prisma.user.delete({ where: { id } });
+  await prisma.user.deleteMany({ where: { id, tenantId } });
   revalidatePath("/admin/settings");
 }

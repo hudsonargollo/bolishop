@@ -1,34 +1,27 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { DEFAULT_TENANT_SLUG, RESERVED_SLUGS } from "@/lib/tenant-config";
 
-// Signed-out visitors heading for a members-only page are sent to sign in
-// *before* anything renders. (Doing it inside the page meant the browser first
-// showed the store header + footer around an empty page, then jumped to the
-// sign-in screen.) Only cookie presence is checked here — the pages still verify
-// the session itself, so a stale or forged cookie gets the in-page redirect.
-
-const CUSTOMER_COOKIE = "zariera_customer";
-const ADMIN_COOKIE = "zariera_admin";
-
+/**
+ * Stamps the tenant the request belongs to into `x-tenant-slug`, so server
+ * components and server actions can scope their queries without every form
+ * having to carry a hidden field.
+ *
+ * - "/acme/..."      → acme (unless acme is a platform path like /admin or /api)
+ * - "/acme"          → acme
+ * - anything else    → the deployment's default tenant (legacy /admin, /api, root)
+ */
 export function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
-  const admin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const first = decodeURIComponent(request.nextUrl.pathname.split("/")[1] ?? "");
+  const slug =
+    first && !RESERVED_SLUGS.has(first) && !first.startsWith("favicon") ? first : DEFAULT_TENANT_SLUG;
 
-  if (admin) {
-    if (pathname === "/admin/login" || request.cookies.has(ADMIN_COOKIE)) return NextResponse.next();
-    return NextResponse.redirect(new URL("/admin/login", request.url));
-  }
-
-  if (request.cookies.has(CUSTOMER_COOKIE)) return NextResponse.next();
-  const login = new URL("/login", request.url);
-  login.searchParams.set("next", pathname + search);
-  return NextResponse.redirect(login);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-tenant-slug", slug);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
-// Literals only — the matcher is read statically at build time.
 export const config = {
-  matcher: [
-    { source: "/account/:path*", missing: [{ type: "cookie", key: "zariera_customer" }] },
-    { source: "/checkout", missing: [{ type: "cookie", key: "zariera_customer" }] },
-    { source: "/admin/:path*", missing: [{ type: "cookie", key: "zariera_admin" }] },
-  ],
+  // Skip static assets and the (disk-backed) upload files; everything else —
+  // pages, RSC/flight requests, API routes and server actions — gets the stamp.
+  matcher: "/((?!_next/static|_next/image|uploads/.+|favicon.ico).*)",
 };

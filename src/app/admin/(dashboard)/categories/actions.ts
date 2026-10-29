@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 import { slugify } from "@/lib/slug";
 import { refreshCatalog } from "@/lib/cache-tags";
 
@@ -21,6 +22,7 @@ export async function createCategory(
   formData: FormData
 ): Promise<CategoryState> {
   await requireAdmin();
+  const tenantId = (await getDefaultTenantId()) ?? "";
   const parsed = schema.safeParse({
     name: formData.get("name"),
     slug: formData.get("slug"),
@@ -32,6 +34,7 @@ export async function createCategory(
   try {
     await prisma.category.create({
       data: {
+        tenantId,
         name: name.trim(),
         slug: slug ? slugify(slug) : slugify(name),
         description: description?.trim() || null,
@@ -54,9 +57,10 @@ export async function createCategory(
 
 export async function deleteCategory(id: string): Promise<void> {
   await requireAdmin();
+  const tenantId = (await getDefaultTenantId()) ?? "";
   let flash = "category-deleted";
   try {
-    await prisma.category.delete({ where: { id } });
+    await prisma.category.deleteMany({ where: { id, tenantId } });
     revalidatePath("/shop");
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";

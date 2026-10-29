@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function ResetPasswordPage({ searchParams }: PageProps<"/reset-password">) {
+export default async function ResetPasswordPage({ searchParams }: PageProps<"/[tenant]/reset-password">) {
   const sp = await searchParams;
   const token = (Array.isArray(sp.token) ? sp.token[0] : sp.token) ?? "";
   return <ResetPasswordForm token={token} />;

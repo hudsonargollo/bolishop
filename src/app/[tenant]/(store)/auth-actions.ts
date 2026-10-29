@@ -13,6 +13,7 @@ import { logDbError } from "@/lib/db-errors";
 import { siteUrl } from "@/lib/site";
 import { requireCustomer } from "@/lib/customer-auth";
 import { issueCode, verifyCode, setPending, getPending, clearPending, RESEND_COOLDOWN_S } from "@/lib/otp";
+import { currentTenant } from "@/lib/tenant-request";
 
 export type AuthState = {
   error?: string;
@@ -39,6 +40,13 @@ function firstFieldError(checks: [string, string | null][]): AuthState | null {
 
 const MINUTE = 60_000;
 
+/** The tenant this request is on (stamped by proxy.ts), with its slug so
+ *  every redirect stays inside the tenant's own store URLs. */
+async function tenantContext(): Promise<{ id: string; slug: string } | null> {
+  const t = await currentTenant();
+  return t ? { id: t.id, slug: t.slug } : null;
+}
+
 export async function registerAction(prev: AuthState, formData: FormData): Promise<AuthState> {
   return { ...(await register(prev, formData)), values: keep(formData, ["name", "email"]) };
 }
@@ -48,6 +56,8 @@ export async function registerAction(prev: AuthState, formData: FormData): Promi
 // nobody can register an email address they don't own.
 async function register(_prev: AuthState, formData: FormData): Promise<AuthState> {
   if (!rateLimit(`register:${await clientIp()}`, 8, 60 * MINUTE)) return { error: TOO_MANY };
+  const tenant = await tenantContext();
+  if (!tenant) return { error: "Store not found. Please start again from the store." };
 
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -63,7 +73,12 @@ async function register(_prev: AuthState, formData: FormData): Promise<AuthState
   const payload = { name, passwordHash: hashPassword(password), next: safeNext(formData.get("next")) };
 
   try {
-    if (await prisma.customer.findUnique({ where: { email: e }, select: { id: true } })) {
+    if (
+      await prisma.customer.findFirst({
+        where: { tenantId: tenant.id, email: e },
+        select: { id: true },
+      })
+    ) {
       return {
         error: "An account with this email already exists. Please sign in or reset your password.",
         fields: ["email"],
@@ -87,7 +102,7 @@ async function register(_prev: AuthState, formData: FormData): Promise<AuthState
   }
 
   await setPending(e, "register");
-  redirect("/register/verify");
+  redirect(`/${tenant.slug}/register/verify`);
 }
 
 export type OtpState = { ok?: boolean; error?: string; message?: string; retryAfter?: number };
@@ -97,6 +112,8 @@ const CODE_MSG = { expired: "Your sign-up session expired. Please start again." 
 // Step 2 of sign-up: confirm the code, then create the (verified) account.
 export async function verifyRegistrationAction(_prev: OtpState, formData: FormData): Promise<OtpState> {
   if (!rateLimit(`otp:${await clientIp()}`, 25, 10 * MINUTE)) return { error: TOO_MANY };
+  const tenant = await tenantContext();
+  if (!tenant) return { error: CODE_MSG.expired };
   const pending = await getPending("register");
   if (!pending) return { error: CODE_MSG.expired };
 
@@ -107,11 +124,11 @@ export async function verifyRegistrationAction(_prev: OtpState, formData: FormDa
     const data = (r.payload ?? {}) as { name?: string; passwordHash?: string; next?: string };
     if (!data.name || !data.passwordHash) return { error: CODE_MSG.expired };
     created = await prisma.customer.create({
-      data: { name: data.name, email: pending.email, passwordHash: data.passwordHash, emailVerifiedAt: new Date() },
+      data: { tenantId: tenant.id, name: data.name, email: pending.email, passwordHash: data.passwordHash, emailVerifiedAt: new Date() },
     });
     await clearPending();
     await startCustomerSession({ id: created.id, email: created.email, name: created.name });
-    redirect(withFlash(safeNext(data.next), "register"));
+    redirect(withFlash(`/${tenant.slug}${safeNext(data.next)}`, "register"));
   } catch (err) {
     if (isRedirect(err)) throw err;
     const kind = logDbError("register-verify", err);
@@ -137,35 +154,48 @@ export async function resendRegistrationCode(): Promise<OtpState> {
 // ---------- Existing customers: verify email (accounts made before OTP / at checkout) ----------
 
 export async function startEmailVerification(): Promise<void> {
-  const session = await requireCustomer("/account");
-  const customer = await prisma.customer.findUnique({
-    where: { id: session.id },
+  const tenant = await tenantContext();
+  if (!tenant) redirect("/");
+  const t = (rel: string) => `/${tenant.slug}${rel}`;
+  const session = await requireCustomer(t("/account"));
+  const customer = await prisma.customer.findFirst({
+    where: { id: session.id, tenantId: tenant.id },
     select: { email: true, emailVerifiedAt: true },
   });
   if (!customer) {
     // Account was removed but the browser still holds its session cookie.
     await endCustomerSession();
-    redirect("/login");
+    redirect(t("/login"));
   }
-  if (customer.emailVerifiedAt) redirect("/account");
+  if (customer.emailVerifiedAt) redirect(t("/account"));
   const r = await issueCode(customer.email, "verify");
-  if (!r.ok && !r.retryAfter) redirect("/account?flash=verify-send-failed");
+  if (!r.ok && !r.retryAfter) redirect(t("/account?flash=verify-send-failed"));
   await setPending(customer.email, "verify");
-  redirect("/account/verify-email");
+  redirect(t("/account/verify-email"));
 }
 
 export async function verifyEmailAction(_prev: OtpState, formData: FormData): Promise<OtpState> {
   if (!rateLimit(`otp:${await clientIp()}`, 25, 10 * MINUTE)) return { error: TOO_MANY };
-  const session = await requireCustomer("/account");
+  const tenant = await tenantContext();
+  if (!tenant) return { error: "Store not found. Please start again from the store." };
+  const t = (rel: string) => `/${tenant.slug}${rel}`;
+  const session = await requireCustomer(t("/account"));
   const pending = await getPending("verify");
   if (!pending || pending.email !== session.email.toLowerCase())
     return { error: "This verification session expired. Please start again from your account." };
   try {
     const r = await verifyCode(pending.email, "verify", String(formData.get("code") ?? ""));
     if (!r.ok) return { error: r.error };
-    await prisma.customer.update({ where: { id: session.id }, data: { emailVerifiedAt: new Date() } });
+    const ok = await prisma.customer.updateMany({
+      where: { id: session.id, tenantId: tenant.id },
+      data: { emailVerifiedAt: new Date() },
+    });
+    if (ok.count !== 1) {
+      await endCustomerSession();
+      redirect(t("/login"));
+    }
     await clearPending();
-    redirect("/account?flash=email-verified");
+    redirect(t("/account?flash=email-verified"));
   } catch (err) {
     if (isRedirect(err)) throw err;
     logDbError("verify-email", err);
@@ -200,6 +230,8 @@ export async function loginAction(prev: AuthState, formData: FormData): Promise<
 }
 
 async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const tenant = await tenantContext();
+  if (!tenant) return { error: "Store not found. Please start again from the store." };
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   if (!email || !password) {
@@ -214,7 +246,7 @@ async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
 
   let customer;
   try {
-    customer = await prisma.customer.findUnique({ where: { email } });
+    customer = await prisma.customer.findFirst({ where: { tenantId: tenant.id, email } });
   } catch (err) {
     logDbError("login", err);
     return { error: "Service unavailable. Please try again shortly." };
@@ -226,12 +258,14 @@ async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
   }
 
   await startCustomerSession({ id: customer.id, email: customer.email, name: customer.name });
-  redirect(withFlash(safeNext(formData.get("next")), "login"));
+  redirect(withFlash(`/${tenant.slug}${safeNext(formData.get("next"))}`, "login"));
 }
 
 export async function logoutAction(): Promise<void> {
+  const tenant = await tenantContext();
   await endCustomerSession();
-  redirect("/?flash=signed-out");
+  // Back to the store (tenant) the shopper was on.
+  redirect(tenant ? `/${tenant.slug}?flash=signed-out` : "/?flash=signed-out");
 }
 
 // ---------- Password reset ----------
@@ -264,7 +298,9 @@ async function requestReset(_prev: AuthState, formData: FormData): Promise<AuthS
   };
 
   try {
-    const customer = await prisma.customer.findUnique({ where: { email } });
+    const tenant = await tenantContext();
+    if (!tenant) return done;
+    const customer = await prisma.customer.findFirst({ where: { tenantId: tenant.id, email } });
     if (!customer) return done;
     const token = createToken<ResetToken>("reset", {
       id: customer.id,
@@ -274,7 +310,8 @@ async function requestReset(_prev: AuthState, formData: FormData): Promise<AuthS
     await sendPasswordResetEmail({
       to: customer.email,
       name: customer.name,
-      url: `${siteUrl}/reset-password?token=${encodeURIComponent(token)}`,
+      // Tenant-prefixed so the landing page is this tenant's reset form.
+      url: `${siteUrl}/${tenant.slug}/reset-password?token=${encodeURIComponent(token)}`,
     });
   } catch (err) {
     console.error("[auth] password reset request failed:", err);
@@ -296,7 +333,9 @@ export async function resetPasswordAction(_prev: AuthState, formData: FormData):
 
   let customer;
   try {
-    customer = await prisma.customer.findUnique({ where: { id: data.id } });
+    const tenant = await tenantContext();
+    if (!tenant) return invalid;
+    customer = await prisma.customer.findFirst({ where: { id: data.id, tenantId: tenant.id } });
     if (!customer || fingerprint(customer.passwordHash) !== data.v) return invalid;
     customer = await prisma.customer.update({
       where: { id: customer.id },
@@ -307,7 +346,7 @@ export async function resetPasswordAction(_prev: AuthState, formData: FormData):
   }
 
   await startCustomerSession({ id: customer.id, email: customer.email, name: customer.name });
-  redirect("/account?flash=password-reset");
+  redirect(`/${(await tenantContext())?.slug ?? ""}/account?flash=password-reset`);
 }
 
 function withFlash(path: string, flash: string): string {

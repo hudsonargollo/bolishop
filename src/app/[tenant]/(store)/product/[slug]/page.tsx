@@ -12,6 +12,7 @@ import { JsonLd } from "@/components/json-ld";
 
 import { siteUrl } from "@/lib/site";
 import { AccordionItem } from "@/components/ui/accordion-item";
+import { requireTenant } from "@/lib/tenant";
 
 // Product pages are cached and served instantly; a product / stock change
 // refreshes them (catalog tag + revalidatePath in the admin actions).
@@ -22,9 +23,10 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
   params,
-}: PageProps<"/product/[slug]">): Promise<Metadata> {
-  const { slug } = await params;
-  const product = await getProductBySlug(slug);
+}: PageProps<"/[tenant]/product/[slug]">): Promise<Metadata> {
+  const { slug, tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
+  const product = await getProductBySlug(tenant.id, slug);
   if (!product) return { title: "Not found" };
   const description = product.description ?? `${product.name} — ZARIERA stainless steel jewelry.`;
   return {
@@ -59,15 +61,16 @@ function stoneOf(text: string): string | null {
   return null;
 }
 
-export default async function ProductPage({ params }: PageProps<"/product/[slug]">) {
-  const { slug } = await params;
-  const product = await getProductBySlug(slug);
+export default async function ProductPage({ params }: PageProps<"/[tenant]/product/[slug]">) {
+  const { slug, tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
+  const product = await getProductBySlug(tenant.id, slug);
   if (!product) notFound();
 
-  const settings = await getStoreSettings();
+  const settings = await getStoreSettings(tenant.id);
   const DELIVERY_TIME = settings.shipping.deliveryTime;
   const off = discountPercent(product.price, product.compareAtPrice);
-  const related = await getRelatedProducts(product);
+  const related = await getRelatedProducts(tenant.id, product);
   const inStock = product.stock > 0;
   const lowStock = inStock && product.stock <= settings.inventory.lowStockThreshold;
 

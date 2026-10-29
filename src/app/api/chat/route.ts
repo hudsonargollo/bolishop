@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { answerCustomer, aiEnabled, type ChatTurn } from "@/lib/ai-assistant";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 // Support chat endpoint. The browser sends the recent conversation (plain
 // text); the assistant answers from the live catalog, store settings and
@@ -51,6 +52,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Send a question" }, { status: 400 });
   }
 
-  const result = await answerCustomer('zariera', history);
+  const result = await answerCustomer((await getDefaultTenantId()) ?? "", history);
   return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
 }

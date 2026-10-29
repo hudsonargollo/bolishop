@@ -8,7 +8,7 @@ import { StatusUpdateForm } from "@/components/admin/status-update-form";
 import { updateOrderStatus, updatePaymentStatus } from "../actions";
 import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS } from "@/lib/order-status";
 import { courierLabel, trackingUrl } from "@/lib/couriers";
-import { requireAdmin } from "@/lib/admin";
+import { requireTenantAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Order details" };
 
@@ -16,10 +16,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminOrderDetailPage({
   params,
-}: PageProps<"/admin/orders/[id]">) {
-  await requireAdmin(); // layouts don't re-run on client navigation
-  const { id } = await params;
-  const order = await getAdminOrder(id);
+}: PageProps<"/[tenant]/admin/orders/[id]">) {
+  const { tenant: tenantSlug, id } = await params;
+  const { tenantId } = await requireTenantAdmin(tenantSlug); // layouts don't re-run on client navigation
+  const order = await getAdminOrder(tenantId, id);
   if (!order) notFound();
 
   return (

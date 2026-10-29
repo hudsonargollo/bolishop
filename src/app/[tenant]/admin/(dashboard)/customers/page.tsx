@@ -1,7 +1,7 @@
 import { getAdminCustomers } from "@/lib/admin-data";
 import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
-import { requireAdmin } from "@/lib/admin";
+import { requireTenantAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Customers" };
 
@@ -11,9 +11,10 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default async function AdminCustomersPage() {
-  await requireAdmin(); // layouts don't re-run on client navigation
-  const { dbConnected, customers } = await getAdminCustomers();
+export default async function AdminCustomersPage({ params }: PageProps<"/[tenant]/admin/customers">) {
+  const { tenant: tenantSlug } = await params;
+  const { tenantId } = await requireTenantAdmin(tenantSlug); // layouts don't re-run on client navigation
+  const { dbConnected, customers } = await getAdminCustomers(tenantId);
 
   return (
     <div>

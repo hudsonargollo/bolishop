@@ -1,12 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { markOrderPayment } from "@/lib/order-payment";
 import { verifyPayfastHash } from "@/lib/payments";
 import { siteUrl } from "@/lib/site";
+import { getTenant } from "@/lib/tenant";
 
 // PayFast sends the buyer back here (SUCCESS_URL / FAILURE_URL, GET) and also
-// notifies server-to-server (CHECKOUT_URL, GET or POST). Fields include
-// basket_id, err_code ("000" = ok), transaction_amount and validation_hash.
-// The order is only updated when validation_hash verifies against our key.
+// notifies server-to-server (CHECKOUT_URL, GET or POST — see the lib comment).
+// Fields include basket_id, err_code ("000" = ok), transaction_amount and
+// validation_hash. The order is only updated when validation_hash verifies
+// against our key, and it stays inside this tenant's orders.
 
 type Fields = { basketId: string; errCode: string; hash: string; amount: number | null };
 
@@ -22,25 +24,27 @@ function pick(get: (k: string) => string | null): Fields {
   };
 }
 
-async function apply(tenant: string, f: Fields): Promise<{ orderNumber: string; success: boolean }> {
+async function apply(tenantSlug: string, f: Fields): Promise<{ orderNumber: string; success: boolean }> {
   if (!f.basketId || !verifyPayfastHash(f.basketId, f.errCode, f.hash)) {
     if (f.basketId) console.warn(`[payfast] rejected unverified callback for ${f.basketId}`);
     return { orderNumber: f.basketId, success: false };
   }
+  const tenant = await getTenant(tenantSlug);
+  if (!tenant) return { orderNumber: f.basketId, success: false };
   const success = f.errCode === "000" || f.errCode === "00";
-  await markOrderPayment(tenant, f.basketId, success, success ? f.amount : null);
+  await markOrderPayment(tenant.id, f.basketId, success, success ? f.amount : null);
   return { orderNumber: f.basketId, success };
 }
 
-// Buyer redirect (and GET-style IPN): verify, then send the shopper on.
 export async function GET(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params;
   const sp = new URL(request.url).searchParams;
   const { orderNumber, success } = await apply(tenant, pick((k) => sp.get(k)));
+  // Buyer redirect — back into this store's own checkout pages.
   const target = success
     ? `/checkout/success?order=${encodeURIComponent(orderNumber)}`
     : `/checkout?payment=failed`;
-  return NextResponse.redirect(`${siteUrl}${target}`, { status: 303 });
+  return NextResponse.redirect(`${siteUrl}/${tenant}${target}`, { status: 303 });
 }
 
 // Server-to-server notification.

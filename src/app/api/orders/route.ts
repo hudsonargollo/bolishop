@@ -5,6 +5,7 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { prisma } from "@/lib/prisma";
 import { clientIp, rateLimit, TOO_MANY } from "@/lib/rate-limit";
 import { siteUrl } from "@/lib/site";
+import { getTenant } from "@/lib/tenant";
 
 export async function POST(request: NextRequest) {
   if (!rateLimit(`order:${await clientIp()}`, 10, 10 * 60_000)) {
@@ -21,7 +22,10 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = body as any;
   const method: PaymentMethod = input?.paymentMethod;
-  const tenantSlug = (body.tenantSlug as string | undefined) || "zariera";
+  const tenant = (await getTenant((body.tenantSlug as string | undefined) || "zariera")) ?? null;
+  if (!tenant) {
+    return NextResponse.json({ ok: false, error: "Store not found" }, { status: 404 });
+  }
 
   // Never take an "online" order we can't actually charge — it would look
   // confirmed to the shopper while no payment is ever collected.
@@ -37,7 +41,7 @@ export async function POST(request: NextRequest) {
   const session = await getCustomerSession();
   const customer = session
     ? await prisma.customer
-        .findUnique({ where: { tenantId: tenantSlug, id: session.id }, select: { id: true, email: true } })
+        .findUnique({ where: { tenantId: tenant.id, id: session.id }, select: { id: true, email: true } })
         .catch(() => null)
     : null;
   if (!customer) {
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
   }
 
   // The order belongs to the account, so its emails go to the account's address.
-  const result = await createOrder(tenantSlug, { ...input, email: customer.email }, customer.id);
+  const result = await createOrder(tenant.id, { ...input, email: customer.email }, customer.id);
 
   if (!result.ok) {
     return NextResponse.json(result, { status: 400 });
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   if (method === "PAYFAST" || method === "SAFEPAY") {
     const order = encodeURIComponent(result.orderNumber);
-    const payfastCallback = `${siteUrl}/api/payments/payfast/callback`;
+    const payfastCallback = `${siteUrl}/${tenant.slug}/api/payments/payfast/callback`;
     const payment = await initiatePayment(method, {
       orderNumber: result.orderNumber,
       amount: result.total,
@@ -66,17 +70,17 @@ export async function POST(request: NextRequest) {
         phone: String(input.phone ?? ""),
       },
       returnUrl:
-        method === "PAYFAST" ? payfastCallback : `${siteUrl}/checkout/success?order=${order}`,
+        method === "PAYFAST" ? payfastCallback : `${siteUrl}/${tenant.slug}/checkout/success?order=${order}`,
       cancelUrl:
-        method === "PAYFAST" ? payfastCallback : `${siteUrl}/api/payments/cancel?order=${order}`,
+        method === "PAYFAST" ? payfastCallback : `${siteUrl}/${tenant.slug}/api/payments/cancel?order=${order}`,
       notifyUrl:
-        method === "PAYFAST" ? payfastCallback : `${siteUrl}/api/payments/safepay/webhook`,
+        method === "PAYFAST" ? payfastCallback : `${siteUrl}/${tenant.slug}/api/payments/safepay/webhook`,
     });
 
     if (payment.configured && payment.ok) {
       if (payment.reference) {
         await prisma.order
-          .update({ where: { tenantId_orderNumber: { tenantId: tenantSlug, orderNumber: result.orderNumber } }, data: { paymentRef: payment.reference } })
+          .update({ where: { tenantId_orderNumber: { tenantId: tenant.id, orderNumber: result.orderNumber } }, data: { paymentRef: payment.reference } })
           .catch((err) => console.error("[order] could not save payment reference:", err));
       }
       return NextResponse.json(
@@ -88,12 +92,12 @@ export async function POST(request: NextRequest) {
     // Gateway unreachable/rejected: release the stock and tell the shopper.
     console.error("[order] payment initiation failed:", payment.configured ? payment.error : "not configured");
     const placed = await prisma.order.findUnique({
-      where: { tenantId_orderNumber: { tenantId: tenantSlug, orderNumber: result.orderNumber } },
+      where: { tenantId_orderNumber: { tenantId: tenant.id, orderNumber: result.orderNumber } },
       select: { id: true },
     });
     if (placed) {
       await prisma.order.update({ where: { id: placed.id }, data: { paymentStatus: "FAILED" } });
-      await cancelOrderAndRestock(tenantSlug, placed.id);
+      await cancelOrderAndRestock(tenant.id, placed.id);
     }
     return NextResponse.json(
       {

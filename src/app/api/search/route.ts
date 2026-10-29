@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { searchStore } from "@/lib/catalog";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 // Instant suggestions for the search box: the top few pieces plus how the query
 // was read (category, typo fix). The full list lives on /search.
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim().slice(0, 100) ?? "";
   if (!q) return NextResponse.json({ total: 0, products: [], category: null, correction: null, partial: false });
 
-  const r = await searchStore('zariera', q);
+  const r = await searchStore((await getDefaultTenantId()) ?? "", q);
   return NextResponse.json({
     total: r.products.length,
     partial: r.partial,

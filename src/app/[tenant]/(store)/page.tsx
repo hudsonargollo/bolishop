@@ -15,6 +15,7 @@ import { JsonLd } from "@/components/json-ld";
 import { siteUrl } from "@/lib/site";
 import { getStoreSettings } from "@/lib/settings";
 import { formatPrice } from "@/lib/format";
+import { requireTenant } from "@/lib/tenant";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -51,14 +52,16 @@ const trustBadges = (freeThreshold: number) => [
 
 export const revalidate = 300;
 
-export default async function HomePage() {
-  const settings = await getStoreSettings();
+export default async function HomePage({ params }: PageProps<"/[tenant]">) {
+  const { tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
+  const settings = await getStoreSettings(tenant.id);
   const TRUST = trustBadges(settings.shipping.freeThreshold);
   const CONTACT = settings.social;
   const [featured, newest, categories] = await Promise.all([
-    getFeaturedProducts(8),
-    getProducts({ sort: "newest" }),
-    getCategories(),
+    getFeaturedProducts(tenant.id, 8),
+    getProducts(tenant.id, { sort: "newest" }),
+    getCategories(tenant.id),
   ]);
   const topCategories = categories.slice(0, 4);
 

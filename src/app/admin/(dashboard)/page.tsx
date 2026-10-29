@@ -5,6 +5,7 @@ import { formatPrice } from "@/lib/format";
 import { DbBanner } from "@/components/admin/db-banner";
 import { StatusBadge } from "@/components/status-badge";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export const metadata = { title: { absolute: "Dashboard · ZARIERA Admin" } };
 
@@ -20,11 +21,12 @@ function formatDate(iso: string): string {
 
 export default async function AdminDashboard() {
   await requireAdmin(); // layouts don't re-run on client navigation
+  const tenantId = (await getDefaultTenantId()) ?? "";
   const [stats, ordersData, productsData, settings] = await Promise.all([
-    getAdminStats(),
-    getAdminOrders(),
-    getAdminProducts(),
-    getStoreSettings(),
+    getAdminStats(tenantId),
+    getAdminOrders(tenantId),
+    getAdminProducts(tenantId),
+    getStoreSettings(tenantId),
   ]);
   const LOW = settings.inventory.lowStockThreshold;
   const recentOrders = ordersData.orders.slice(0, 5);

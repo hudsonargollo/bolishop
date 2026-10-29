@@ -3,18 +3,19 @@ import { notFound } from "next/navigation";
 import { getAdminProduct, getCategoriesForSelect } from "@/lib/admin-data";
 import { ProductForm } from "@/components/admin/product-form";
 import { updateProduct } from "../actions";
-import { requireAdmin } from "@/lib/admin";
+import { requireTenantAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Edit product" };
 
 export const dynamic = "force-dynamic";
 
-export default async function EditProductPage({ params }: PageProps<"/admin/products/[id]">) {
-  await requireAdmin(); // layouts don't re-run on client navigation
+export default async function EditProductPage({ params }: PageProps<"/[tenant]/admin/products/[id]">) {
+  const { tenant: tenantSlug } = await params;
+  const { tenantId } = await requireTenantAdmin(tenantSlug); // layouts don't re-run on client navigation
   const { id } = await params;
   const [product, categories] = await Promise.all([
-    getAdminProduct(id),
-    getCategoriesForSelect(),
+    getAdminProduct(tenantId, id),
+    getCategoriesForSelect(tenantId),
   ]);
   if (!product) notFound();
 

@@ -15,6 +15,7 @@ import {
 } from "@/lib/custom-request";
 import { saveUpload, sniffImage, type ImageExt } from "@/lib/uploads";
 import { emailError } from "@/lib/auth-rules";
+import { currentTenant } from "@/lib/tenant-request";
 
 export type InboundState = { ok?: boolean; error?: string; values?: Record<string, string> };
 
@@ -57,6 +58,8 @@ async function saveContact(_prev: InboundState, formData: FormData): Promise<Inb
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const d = parsed.data;
 
+  const tenant = await currentTenant();
+  const tenantId = tenant?.id;
   try {
     await prisma.contactMessage.create({
       data: {
@@ -66,6 +69,7 @@ async function saveContact(_prev: InboundState, formData: FormData): Promise<Inb
         subject: d.subject || null,
         message: d.message,
         topic: d.topic || null,
+        tenantId: tenantId!,
       },
     });
   } catch (err) {
@@ -140,9 +144,11 @@ export async function sendCustomRequest(_prev: InboundState, formData: FormData)
     ...(photoUrls.length ? ["", REFERENCE_PHOTOS_HEADING, ...photoUrls] : []),
   ].join("\n");
 
+  const tenant = await currentTenant();
+  const tenantId = tenant?.id;
   try {
     await prisma.contactMessage.create({
-      data: { name: d.name, email: d.email.toLowerCase(), phone: d.phone, subject, message, topic: "custom" },
+      data: { name: d.name, email: d.email.toLowerCase(), phone: d.phone, subject, message, topic: "custom", tenantId: tenantId! },
     });
   } catch (err) {
     console.error("[custom] could not save request:", err);
@@ -165,10 +171,12 @@ export async function subscribe(_prev: InboundState, formData: FormData): Promis
   }
   const source = String(formData.get("source") ?? "newsletter").slice(0, 80) || "newsletter";
 
+  const tenant = await currentTenant();
+  const tenantId = tenant?.id;
   try {
     await prisma.subscriber.upsert({
-      where: { email },
-      create: { email, source },
+      where: { tenantId_email: { tenantId: tenantId!, email } },
+      create: { email, source, tenantId: tenantId! },
       update: {},
     });
   } catch (err) {

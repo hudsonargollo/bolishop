@@ -4,15 +4,16 @@ import {
   CategorySalesPanel,
   RecentCustomersPanel,
 } from "@/components/admin/dashboard-insights";
-import { requireAdmin } from "@/lib/admin";
+import { requireTenantAdmin } from "@/lib/admin";
 
 export const metadata = { title: "Insights" };
 
 export const dynamic = "force-dynamic";
 
-export default async function InsightsPage() {
-  await requireAdmin(); // layouts don't re-run on client navigation
-  const [breakdown, recent] = await Promise.all([getSalesBreakdown(), getRecentCustomers(6)]);
+export default async function InsightsPage({ params }: PageProps<"/[tenant]/admin/insights">) {
+  const { tenant: tenantSlug } = await params;
+  const { tenantId } = await requireTenantAdmin(tenantSlug); // layouts don't re-run on client navigation
+  const [breakdown, recent] = await Promise.all([getSalesBreakdown(tenantId), getRecentCustomers(tenantId, 6)]);
 
   return (
     <div>

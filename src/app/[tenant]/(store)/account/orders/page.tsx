@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default async function OrderStatusPage({
   searchParams,
-}: PageProps<"/account/orders">) {
+}: PageProps<"/[tenant]/account/orders">) {
   const sp = await searchParams;
   // Only the order number may be pre-filled from a link — never the email.
   const orderNumber = (Array.isArray(sp.order) ? sp.order[0] : sp.order)?.trim() ?? "";

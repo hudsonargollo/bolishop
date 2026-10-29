@@ -5,6 +5,7 @@ import {
   RecentCustomersPanel,
 } from "@/components/admin/dashboard-insights";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export const metadata = { title: "Insights" };
 
@@ -12,7 +13,8 @@ export const dynamic = "force-dynamic";
 
 export default async function InsightsPage() {
   await requireAdmin(); // layouts don't re-run on client navigation
-  const [breakdown, recent] = await Promise.all([getSalesBreakdown(), getRecentCustomers(6)]);
+  const tenantId = (await getDefaultTenantId()) ?? "";
+  const [breakdown, recent] = await Promise.all([getSalesBreakdown(tenantId), getRecentCustomers(tenantId, 6)]);
 
   return (
     <div>

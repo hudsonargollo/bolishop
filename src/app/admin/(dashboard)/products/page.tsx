@@ -5,6 +5,7 @@ import { DbBanner } from "@/components/admin/db-banner";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteProduct } from "./actions";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export const metadata = { title: "Products" };
 
@@ -12,7 +13,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage() {
   await requireAdmin(); // layouts don't re-run on client navigation
-  const { dbConnected, products } = await getAdminProducts();
+  const tenantId = (await getDefaultTenantId()) ?? "";
+  const { dbConnected, products } = await getAdminProducts(tenantId);
 
   return (
     <div>

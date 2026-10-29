@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/admin";
+import { requireTenantAdmin } from "@/lib/admin";
 import { getAdminOrder } from "@/lib/admin-data";
 import { getStoreSettings } from "@/lib/settings";
 import { formatPrice } from "@/lib/format";
@@ -18,10 +18,10 @@ const PAYMENT_LABEL: Record<string, string> = {
 
 // Printable invoice + packing slip. Lives outside the dashboard layout so it
 // prints on a clean A4 page (sidebar/header not included).
-export default async function InvoicePage({ params }: PageProps<"/admin/invoice/[id]">) {
-  await requireAdmin();
-  const { id } = await params;
-  const [order, settings] = await Promise.all([getAdminOrder(id), getStoreSettings()]);
+export default async function InvoicePage({ params }: PageProps<"/[tenant]/admin/invoice/[id]">) {
+  const { tenant: tenantSlug, id } = await params;
+  const { tenantId } = await requireTenantAdmin(tenantSlug);
+  const [order, settings] = await Promise.all([getAdminOrder(tenantId, id), getStoreSettings(tenantId)]);
   if (!order) notFound();
 
   const date = new Date(order.createdAt).toLocaleDateString("en-PK", {

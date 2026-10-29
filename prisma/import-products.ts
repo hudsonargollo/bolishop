@@ -233,29 +233,42 @@ const CATEGORIES = [
 async function main() {
   console.log("Importing ZARIERA products…");
 
-  // ⚠️ DESTRUCTIVE: wipes ALL orders and products. Pre-launch only — refuses to
-  // run unless explicitly confirmed, and never against a production env.
+  // ⚠️ DESTRUCTIVE: wipes ALL orders and products (of this tenant). Pre-launch
+  // only — refuses to run unless explicitly confirmed, and never against a
+  // production env.
   if (process.env.NODE_ENV === "production" || process.env.CONFIRM_WIPE !== "yes") {
     console.error(
-      "Refusing to run: this deletes ALL orders and products.\n" +
+      "Refusing to run: this deletes orders and products.\n" +
         "Re-run with CONFIRM_WIPE=yes (and never on the live database)."
     );
     process.exit(1);
   }
 
-  // Clean slate (pre-launch sample data)
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.product.deleteMany();
+  // Products belong to a tenant; import into the default tenant
+  // (DEFAULT_TENANT_SLUG in .env, else zariera), created on the spot.
+  const slug = process.env.DEFAULT_TENANT_SLUG || "zariera";
+  const tenant = await prisma.tenant.upsert({
+    where: { slug },
+    update: {},
+    create: { slug, name: slug, displayName: process.env.STORE_NAME || "ZARIERA" },
+    select: { id: true },
+  });
+  const tenantId = tenant.id;
+  console.log(`  importing into tenant "${slug}" (${tenantId})`);
+
+  // Clean slate (pre-launch sample data), scoped to that tenant.
+  await prisma.orderItem.deleteMany({ where: { order: { tenantId } } });
+  await prisma.order.deleteMany({ where: { tenantId } });
+  await prisma.product.deleteMany({ where: { tenantId } });
   console.log("  cleared old products & test orders");
 
   // Categories
   const idBySlug = new Map<string, string>();
   for (const c of CATEGORIES) {
     const cat = await prisma.category.upsert({
-      where: { slug: c.slug },
+      where: { tenantId_slug: { tenantId, slug: c.slug } },
       update: { name: c.name, description: c.description },
-      create: c,
+      create: { ...c, tenantId },
     });
     idBySlug.set(c.slug, cat.id);
   }
@@ -264,6 +277,7 @@ async function main() {
   for (const p of PRODUCTS) {
     await prisma.product.create({
       data: {
+        tenantId,
         name: p.name,
         slug: p.slug,
         description: p.description,

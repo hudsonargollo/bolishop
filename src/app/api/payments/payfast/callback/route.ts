@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { markOrderPayment } from "@/lib/order-payment";
 import { verifyPayfastHash } from "@/lib/payments";
 import { siteUrl } from "@/lib/site";
@@ -7,6 +8,8 @@ import { siteUrl } from "@/lib/site";
 // notifies server-to-server (CHECKOUT_URL, GET or POST). Fields include
 // basket_id, err_code ("000" = ok), transaction_amount and validation_hash.
 // The order is only updated when validation_hash verifies against our key.
+// Legacy (non-tenant) endpoint: the basket_id (= order number) reveals which
+// tenant the order belongs to, and the buyer is sent into that tenant's store.
 
 type Fields = { basketId: string; errCode: string; hash: string; amount: number | null };
 
@@ -22,28 +25,39 @@ function pick(get: (k: string) => string | null): Fields {
   };
 }
 
-async function apply(f: Fields): Promise<{ orderNumber: string; success: boolean }> {
+async function apply(f: Fields): Promise<{ orderNumber: string; tenantSlug: string; success: boolean }> {
   if (!f.basketId || !verifyPayfastHash(f.basketId, f.errCode, f.hash)) {
     if (f.basketId) console.warn(`[payfast] rejected unverified callback for ${f.basketId}`);
-    return { orderNumber: f.basketId, success: false };
+    return { orderNumber: f.basketId, tenantSlug: "", success: false };
   }
   const success = f.errCode === "000" || f.errCode === "00";
-  await markOrderPayment(f.basketId, success, success ? f.amount : null);
-  return { orderNumber: f.basketId, success };
+  // Scope the update by looking the order up for its tenant first.
+  const order = await prisma.order
+    .findFirst({ where: { orderNumber: f.basketId }, select: { tenantId: true } })
+    .catch(() => null);
+  let tenantSlug = "";
+  if (order?.tenantId) {
+    const t = await prisma.tenant
+      .findUnique({ where: { id: order.tenantId }, select: { id: true, slug: true } })
+      .catch(() => null);
+    tenantSlug = t?.slug ?? "";
+    if (t) await markOrderPayment(t.id, f.basketId, success, success ? f.amount : null);
+  }
+  return { orderNumber: f.basketId, tenantSlug, success };
 }
 
 // Buyer redirect (and GET-style IPN): verify, then send the shopper on.
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const params = new URL(request.url).searchParams;
-  const { orderNumber, success } = await apply(pick((k) => params.get(k)));
+  const { orderNumber, tenantSlug, success } = await apply(pick((k) => params.get(k)));
   const target = success
     ? `/checkout/success?order=${encodeURIComponent(orderNumber)}`
     : `/checkout?payment=failed`;
-  return NextResponse.redirect(`${siteUrl}${target}`, { status: 303 });
+  return NextResponse.redirect(`${siteUrl}/${tenantSlug}${target}`, { status: 303 });
 }
 
 // Server-to-server notification.
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let fields: Fields;
   try {
     const form = await request.formData();

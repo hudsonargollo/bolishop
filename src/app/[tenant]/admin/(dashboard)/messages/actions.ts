@@ -2,14 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/admin";
+import { actionTenantId, requireAdmin } from "@/lib/admin";
 
 export async function toggleMessageHandled(id: string, handled: boolean): Promise<void> {
   await requireAdmin();
+  const tenantId = (await actionTenantId()) ?? "";
   try {
-    await prisma.contactMessage.update({ where: { id }, data: { handled } });
+    await prisma.contactMessage.updateMany({ where: { id, tenantId }, data: { handled } });
   } catch (err) {
     console.error("[admin] could not update message:", err);
   }
-  revalidatePath("/admin/messages");
+  revalidatePath("/", "layout");
 }

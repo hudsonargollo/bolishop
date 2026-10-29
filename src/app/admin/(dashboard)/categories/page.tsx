@@ -4,6 +4,7 @@ import { AddCategoryForm } from "@/components/admin/category-form";
 import { deleteCategory } from "./actions";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export const metadata = { title: "Categories" };
 
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminCategoriesPage() {
   await requireAdmin(); // layouts don't re-run on client navigation
-  const { dbConnected, categories } = await getAdminCategories();
+  const tenantId = (await getDefaultTenantId()) ?? "";
+  const { dbConnected, categories } = await getAdminCategories(tenantId);
 
   return (
     <div>

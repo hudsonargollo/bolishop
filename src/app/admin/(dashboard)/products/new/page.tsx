@@ -3,6 +3,7 @@ import { getCategoriesForSelect } from "@/lib/admin-data";
 import { ProductForm } from "@/components/admin/product-form";
 import { createProduct } from "../actions";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 export const metadata = { title: "New product" };
 
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 export default async function NewProductPage() {
   await requireAdmin(); // layouts don't re-run on client navigation
-  const categories = await getCategoriesForSelect();
+  const tenantId = (await getDefaultTenantId()) ?? "";
+  const categories = await getCategoriesForSelect(tenantId);
 
   return (
     <div>

@@ -4,6 +4,7 @@ import { ContactForm } from "@/components/contact-form";
 import { getStoreSettings } from "@/lib/settings";
 import { whatsappUrl, phoneHref } from "@/lib/settings-shared";
 import { EmailLink } from "@/components/email-link";
+import { requireTenant } from "@/lib/tenant";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -15,11 +16,13 @@ const TOPICS: Record<string, string> = {
   custom: "Custom design request",
 };
 
-export default async function ContactPage({ searchParams }: PageProps<"/contact">) {
+export default async function ContactPage({ params, searchParams }: PageProps<"/[tenant]/contact">) {
+  const { tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
   const sp = await searchParams;
   const raw = (Array.isArray(sp.topic) ? sp.topic[0] : sp.topic) ?? "";
   const topic = raw in TOPICS ? raw : undefined;
-  const settings = await getStoreSettings();
+  const settings = await getStoreSettings(tenant.id);
   const CONTACT = { ...settings.contact, whatsappUrl: whatsappUrl(settings), phoneHref: phoneHref(settings) };
 
   return (

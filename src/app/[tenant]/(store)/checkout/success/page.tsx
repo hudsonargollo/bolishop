@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { formatPrice } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { ClearCart } from "@/components/cart/clear-cart";
+import { requireTenant } from "@/lib/tenant";
 
 export const metadata: Metadata = {
   title: "Order Confirmed",
@@ -21,10 +22,10 @@ type OrderSummary = {
   productIds: string[];
 };
 
-async function findOrder(orderNumber: string): Promise<OrderSummary | null> {
+async function findOrder(tenantId: string, orderNumber: string): Promise<OrderSummary | null> {
   try {
     const o = await prisma.order.findUnique({
-      where: { orderNumber },
+      where: { tenantId_orderNumber: { tenantId, orderNumber } },
       select: {
         orderNumber: true,
         total: true,
@@ -43,13 +44,16 @@ async function findOrder(orderNumber: string): Promise<OrderSummary | null> {
 }
 
 export default async function SuccessPage({
+  params,
   searchParams,
-}: PageProps<"/checkout/success">) {
+}: PageProps<"/[tenant]/checkout/success">) {
+  const { tenant: tenantSlug } = await params;
+  const { id: tenantId } = await requireTenant(tenantSlug);
   const sp = await searchParams;
   const orderNumber = ((Array.isArray(sp.order) ? sp.order[0] : sp.order) ?? "").trim();
 
   // Everything shown here comes from the database, never from the URL.
-  const order = orderNumber ? await findOrder(orderNumber) : null;
+  const order = orderNumber ? await findOrder(tenantId, orderNumber) : null;
   if (!order) redirect("/cart");
 
   const online = order.paymentMethod !== "COD";

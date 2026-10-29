@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Emblem } from "@/components/brand/emblem";
 import { getStoreSettings } from "@/lib/settings";
 import { AccordionItem } from "@/components/ui/accordion-item";
+import { requireTenant } from "@/lib/tenant";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/faq" },
@@ -41,8 +42,10 @@ const faqs = (DELIVERY_TIME: string) => [
   },
 ];
 
-export default async function FaqPage() {
-  const FAQS = faqs((await getStoreSettings()).shipping.deliveryTime);
+export default async function FaqPage({ params }: PageProps<"/[tenant]/faq">) {
+  const { tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
+  const FAQS = faqs((await getStoreSettings(tenant.id)).shipping.deliveryTime);
   return (
     <div className="mx-auto max-w-3xl px-5 py-16">
       <div className="text-center">

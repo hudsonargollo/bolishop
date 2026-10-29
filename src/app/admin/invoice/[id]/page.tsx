@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { getAdminOrder } from "@/lib/admin-data";
 import { getStoreSettings } from "@/lib/settings";
+import { getDefaultTenantId, getTenant } from "@/lib/tenant";
 import { formatPrice } from "@/lib/format";
 import { courierLabel } from "@/lib/couriers";
 import { PrintButton } from "@/components/admin/print-button";
@@ -20,8 +21,10 @@ const PAYMENT_LABEL: Record<string, string> = {
 // prints on a clean A4 page (sidebar/header not included).
 export default async function InvoicePage({ params }: { params: Promise<{ tenant: string; id: string }> }) {
   await requireAdmin();
-  const { tenant, id } = await params;
-  const [order, settings] = await Promise.all([getAdminOrder(tenant, id), getStoreSettings(tenant)]);
+  const { tenant: tenantSlug, id } = await params;
+  // The tenant may come from the path (or not) — fall back to the default one.
+  const tenantId = (await getTenant(tenantSlug))?.id ?? (await getDefaultTenantId()) ?? "";
+  const [order, settings] = await Promise.all([getAdminOrder(tenantId, id), getStoreSettings(tenantId)]);
   if (!order) notFound();
 
   const date = new Date(order.createdAt).toLocaleDateString("en-PK", {

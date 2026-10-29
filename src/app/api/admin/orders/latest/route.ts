@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+import { getDefaultTenantId } from "@/lib/tenant";
 
 // New-order check for the admin bell. The dashboard calls this every few
 // seconds with the time of the last order it has seen. Each request finishes
@@ -21,8 +22,9 @@ export async function GET(request: Request) {
   const since = new Date(Math.max(parsed && !isNaN(parsed.getTime()) ? parsed.getTime() : Date.now(), floor));
 
   try {
+    const tenantId = await getDefaultTenantId();
     const rows = await prisma.order.findMany({
-      where: { createdAt: { gt: since } },
+      where: tenantId ? { createdAt: { gt: since }, tenantId } : { createdAt: { gt: since } },
       orderBy: { createdAt: "asc" },
       take: 20,
       select: { id: true, orderNumber: true, total: true, customerName: true, createdAt: true },

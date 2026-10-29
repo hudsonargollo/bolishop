@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
+export default async function RegisterPage({ searchParams }: PageProps<"/[tenant]/register">) {
   const sp = await searchParams;
   const next = safeNext(Array.isArray(sp.next) ? sp.next[0] : sp.next);
   if (await getCustomerSession()) redirect(next);

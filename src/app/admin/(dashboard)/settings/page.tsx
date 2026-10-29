@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
+import { getDefaultTenantId } from "@/lib/tenant";
 import { getStoreSettings } from "@/lib/settings";
 import { DbBanner } from "@/components/admin/db-banner";
 import { DeleteButton } from "@/components/admin/delete-button";
@@ -19,9 +20,10 @@ const SECTIONS = [
   { id: "team", label: "Team" },
 ];
 
-async function loadTeam() {
+async function loadTeam(tenantId: string) {
   try {
     const users = await prisma.user.findMany({
+      where: { tenantId },
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
@@ -33,7 +35,8 @@ async function loadTeam() {
 
 export default async function AdminSettingsPage() {
   const session = await requireAdmin();
-  const [settings, team] = await Promise.all([getStoreSettings(), loadTeam()]);
+  const tenantId = (await getDefaultTenantId()) ?? "";
+  const [settings, team] = await Promise.all([getStoreSettings(tenantId), loadTeam(tenantId)]);
   const isOwner = session.role === "ADMIN";
   const adminCount = team.users.filter((u) => u.role === "ADMIN").length;
 

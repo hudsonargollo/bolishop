@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Emblem } from "@/components/brand/emblem";
 import { formatPrice } from "@/lib/format";
 import { getStoreSettings } from "@/lib/settings";
+import { requireTenant } from "@/lib/tenant";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/shipping" },
@@ -10,9 +11,11 @@ export const metadata: Metadata = {
   description: "ZARIERA shipping options, delivery times, and our returns policy.",
 };
 
-export default async function ShippingPage() {
+export default async function ShippingPage({ params }: PageProps<"/[tenant]/shipping">) {
+  const { tenant: tenantSlug } = await params;
+  const tenant = await requireTenant(tenantSlug);
   const { flatFee: FLAT_SHIPPING, freeThreshold: FREE_SHIPPING_THRESHOLD, deliveryTime: DELIVERY_TIME } = (
-    await getStoreSettings()
+    await getStoreSettings(tenant.id)
   ).shipping;
   return (
     <div className="mx-auto max-w-3xl px-5 py-16">
