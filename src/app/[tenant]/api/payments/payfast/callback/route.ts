@@ -22,7 +22,7 @@ function pick(get: (k: string) => string | null): Fields {
   };
 }
 
-async function apply(f: Fields): Promise<{ orderNumber: string; success: boolean }> {
+async function apply(tenant: string, f: Fields): Promise<{ orderNumber: string; success: boolean }> {
   if (!f.basketId || !verifyPayfastHash(f.basketId, f.errCode, f.hash)) {
     if (f.basketId) console.warn(`[payfast] rejected unverified callback for ${f.basketId}`);
     return { orderNumber: f.basketId, success: false };
@@ -33,9 +33,10 @@ async function apply(f: Fields): Promise<{ orderNumber: string; success: boolean
 }
 
 // Buyer redirect (and GET-style IPN): verify, then send the shopper on.
-export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
-  const params = new URL(request.url).searchParams;
-  const { orderNumber, success } = await apply(pick((k) => params.get(k)));
+export async function GET(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
+  const { tenant } = await params;
+  const sp = new URL(request.url).searchParams;
+  const { orderNumber, success } = await apply(tenant, pick((k) => sp.get(k)));
   const target = success
     ? `/checkout/success?order=${encodeURIComponent(orderNumber)}`
     : `/checkout?payment=failed`;
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 // Server-to-server notification.
 export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
+  const { tenant } = await params;
   let fields: Fields;
   try {
     const form = await request.formData();
@@ -54,6 +56,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
-  const { success } = await apply(fields);
+  const { success } = await apply(tenant, fields);
   return NextResponse.json({ ok: true, success });
 }
