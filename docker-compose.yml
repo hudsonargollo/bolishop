@@ -1,0 +1,77 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bolishop
+      POSTGRES_PASSWORD: bolishop
+      POSTGRES_DB: bolishop
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bolishop"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://bolishop:bolishop@db:5432/bolishop?schema=public
+      DIRECT_URL: postgresql://bolishop:bolishop@db:5432/bolishop?schema=public
+      AUTH_SECRET: change-me-to-a-long-random-string
+      ADMIN_EMAIL: admin@zariera.com
+      ADMIN_PASSWORD: change-me
+      NODE_ENV: production
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_SECURE: "false"
+      SMTP_USER: ""
+      SMTP_PASS: ""
+      MAIL_FROM: "ZARIERA <orders@zariera.com>"
+      ADMIN_NOTIFY_EMAIL: ""
+      PAYFAST_MERCHANT_ID: ""
+      PAYFAST_SECURED_KEY: ""
+      PAYFAST_SANDBOX: "true"
+      SAFEPAY_API_KEY: ""
+      SAFEPAY_WEBHOOK_SECRET: ""
+      SAFEPAY_SANDBOX: "true"
+      NEXT_PUBLIC_WHATSAPP_NUMBER: ""
+      NEXT_PUBLIC_CONTACT_PHONE: ""
+      NEXT_PUBLIC_CONTACT_EMAIL: ""
+      NEXT_PUBLIC_CONTACT_CITY: "Lahore, Pakistan"
+      NEXT_PUBLIC_CONTACT_HOURS: "Mon–Sat, 11am – 8pm"
+      NEXT_PUBLIC_INSTAGRAM_URL: ""
+      NEXT_PUBLIC_FACEBOOK_URL: ""
+      NEXT_PUBLIC_TIKTOK_URL: ""
+      NEXT_PUBLIC_FREE_SHIPPING_THRESHOLD: "50000"
+      NEXT_PUBLIC_FLAT_SHIPPING: "500"
+      LEOPARDS_API_KEY: ""
+      LEOPARDS_API_PASSWORD: ""
+      LEOPARDS_ORIGIN_CITY: "Lahore"
+      TCS_USERNAME: ""
+      TCS_PASSWORD: ""
+      TCS_CLIENT_ID: ""
+      TCS_CLIENT_SECRET: ""
+      TCS_COST_CENTER: ""
+      TCS_ORIGIN_CITY: "Lahore"
+      COURIER_SIMULATION: ""
+      UPLOAD_DIR: /app/uploads
+      ANTHROPIC_API_KEY: ""
+      CHAT_MODEL: ""
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["/app/docker-entrypoint.sh"]
+
+volumes:
+  pgdata:
+  uploads:
